@@ -12,7 +12,7 @@ USE [PRG];
 GO
 
 create table [dbo].[Tmp] ( LoadData char(1) NOT NULL );
-INSERT [dbo].[Tmp] SELECT 'Y';
+INSERT [dbo].[Tmp] SELECT 'N';
 GO
 
 ---------------------------------------
@@ -64,6 +64,11 @@ AS
 @Val IN ('U','N','Y')
 GO
 
+CREATE RULE [Legend].[WeekDay]
+AS
+@Val IN ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
+GO
+
 ---------------------------------------
 -- User Defined Types
 ---------------------------------------
@@ -71,6 +76,9 @@ CREATE TYPE [Legend].[AreaCd] FROM [char](3) NOT NULL
 GO
 
 CREATE TYPE [dbo].[State] FROM [char](2) NOT NULL
+GO
+
+CREATE TYPE [Legend].[WeekDay] FROM [varchar](9) NOT NULL
 GO
 
 CREATE TYPE [Legend].[Phone] FROM [char](10) NOT NULL
@@ -98,6 +106,9 @@ sp_bindrule '[Legend].[AreaCd]', '[Legend].[AreaCd]';
 GO
 
 sp_bindrule '[dbo].[State]', '[dbo].[State]';
+GO
+
+sp_bindrule '[Legend].[WeekDay]', '[Legend].[WeekDay]';
 GO
 
 sp_bindrule '[Legend].[PhoneFormat]', '[Legend].[Phone]';
@@ -236,7 +247,12 @@ GO
 CREATE TABLE [Legend].[Day]
 (
 	[Dt]			[smalldatetime]			NOT NULL,
+	[WeekDayNum]	[tinyint]				NOT NULL,
+ 	[WeekDay]		[Legend].[WeekDay]		NOT NULL,
+	[Payday]		[Legend].[YesNo]		NOT NULL,
 	[Week]			[smallint]				NOT NULL,
+	[Year]			[Legend].[Year]			NOT NULL,
+	[Month]			[tinyint]				NOT NULL,
 	[YearMonth]		[Legend].[YearMonth]	NOT NULL,
 	[Qtr]			[Legend].[Qtr]			NOT NULL,
 PRIMARY KEY (Dt)
@@ -265,7 +281,12 @@ SET NOCOUNT ON;
 	DECLARE @Days TABLE
 	(
 		Dt			smalldatetime	NULL,
+		WeekDayNum	tinyint			NULL,
+		WeekDay		varchar(9)		NULL,
+		Payday		char(1)			NULL,
 		Week		smallint		NULL,
+		Year		char(4)			NULL,
+		Month		tinyint			NULL,
 		YearMonth	char(6)			NULL,
 		Qtr			tinyint			NULL
 	);
@@ -284,8 +305,8 @@ SET NOCOUNT ON;
 		ELSE 
 			SET @YearMonth = @Year + convert(char(2), @Month);
 
-		INSERT @Days (Dt, YearMonth)
-		VALUES (@Dt, @YearMonth);
+		INSERT @Days (Dt, Payday, YearMonth)
+		VALUES (@Dt, 'N',  @YearMonth);
 
 		SET @Dt += 1;
 	END
@@ -298,10 +319,21 @@ SET NOCOUNT ON;
 				WHEN DATEPART(m,Dt) BETWEEN 10 AND 12 THEN 4
 				END );
 	
+	update @Days set Year = datepart(Year, Dt);
+
+	update @Days set Month = datepart(Month, Dt);
+
 	update @Days set Week = DATEPART(wk,Dt);
 
-	INSERT [Legend].[Day] ( Dt, Week, YearMonth, Qtr )
-	SELECT Dt, Week, YearMonth, Qtr
+	update @Days set WeekDayNum = datepart(weekday, Dt);
+
+	update @Days set WeekDay = datename(weekday,Dt);
+
+	update @Days set Payday = 'Y'
+	where WeekDay = 'Friday' and (Week % 2) = 0;
+
+	INSERT [Legend].[Day] ( Dt, WeekDayNum, WeekDay, Payday, Week, Year, Month, YearMonth, Qtr )
+	SELECT Dt, WeekDayNum, WeekDay, Payday, Week, Year, Month, YearMonth, Qtr
 	FROM @Days
 	WHERE Dt NOT IN (select Dt FROM [Legend].[Day])
 	;
@@ -609,6 +641,7 @@ BEGIN
 	select VIN, Make, Model, Year
 	from [QSM].[CarData].[Car]
 	where Model in (select Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
+--	  and Make = 'KIA' -- test 
 END
 GO
 
@@ -730,6 +763,7 @@ CREATE TABLE [Employee].[Employee]
 	[EmplId]			[int]				NOT NULL	IDENTITY(1,1),
 	[RoleId]			[int]				NOT NULL,
 	[RateId]			[int]				NOT NULL,
+	[HireDt]			[smalldatetime]		NOT NULL,
 	[FirstName]			[varchar](20)		NOT NULL,
 	[LastName]			[varchar](30)		NULL,
 	[Phone]				[Legend].[Phone]	NULL,
@@ -740,16 +774,17 @@ CREATE TABLE [Employee].[Employee]
 	[Zip]				[varchar](10)		NULL,
 PRIMARY KEY ([EmplId]),
 FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId),
-FOREIGN KEY ([RateId]) REFERENCES [Employee].[Rate] (RateId)
+FOREIGN KEY ([RateId]) REFERENCES [Employee].[Rate] (RateId),
+FOREIGN KEY ([HireDt]) REFERENCES [Legend].[Day] (Dt)
 );
 GO
 
 SET IDENTITY_INSERT [Employee].[Employee] ON;
-INSERT [Employee].[Employee] (EmplId, RoleId, RateId, FirstName)
-select 1, 3, 5, 'Tawney' union
-select 2, 1, 1, 'Guz Jr' union
-SELECT 3, 2, 5, 'Chainz' union
-select 4, 1, 2, 'Prego'
+INSERT [Employee].[Employee] (EmplId, RoleId, RateId, FirstName, HireDt)
+select 1, 3, 5, 'Tawney', '2015-04-01' union
+select 2, 1, 1, 'Guz Jr', '2015-04-01' union
+SELECT 3, 2, 5, 'Chainz', '2015-04-01' union
+select 4, 1, 2, 'Prego', '2015-04-01'
 SET IDENTITY_INSERT [Employee].[Employee] OFF;
 
 /*
@@ -760,11 +795,11 @@ where e.RateId = r.RateId
 */
 
 ---------------------------------------
---
+-- drop table [Employee].[Day]
 -----------------------------------------
 CREATE TABLE [Employee].[Day]
 (
-	[EmplId]			[int]				NOT NULL	IDENTITY(1,1),
+	[EmplId]			[int]				NOT NULL,
 	[Dt]				[smalldatetime]		NOT NULL,
 	[StartTm]			[smalldatetime]		NOT NULL,
 	[EndTm]				[smalldatetime]		NULL,
@@ -877,9 +912,12 @@ CREATE TABLE [Policy].[Policy]
 	[ClosingDt]			[smalldatetime]		NOT NULL,
 	[SaleCnt]			[tinyint]			NOT NULL,
 	[PaidInFull]		[Legend].[YesNo]	NOT NULL,
-	[Retail]			[money]				NOT NULL,
 	[Retail++]			[money]				NOT NULL,
+	[Retail]			[money]				NOT NULL,
 	[Discount]			[money]				NOT NULL,
+	[TotalCost]			[money]				NOT NULL,		-- outta be Retail - Discount unless is 0 and total is greater than Retail and more towards Retail++
+	[AdminCost]			[money]				NOT NULL,
+	[GrossProfit]		[money]				NOT NULL,
 	[FirstPaymentDt]	[smalldatetime]		NULL,
 	[Months]			[smallint]			NOT NULL,
 	[PaymentFrequency]	[int]				NULL,
@@ -899,21 +937,11 @@ GO
 
 /* --------------------------------------------------------------------------------------------------------
 
-SET IDENTITY_INSERT [Policy].[Policy] ON;
-
-DECLARE @CompanyId_Sunpath int = (SELECT CompanyId FROM [Policy].[Company] WHERE Company = 'SunPath');
-DECLARE @EmplId_Tawny int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
-
-INSERT [Policy].[Policy] ( PolicyId, CompanyId, EmplId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount, FirstPaymentDt, Months, PaymentFrequency )
-SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, @EmplId_Tawny as EmplId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
-		2105 as Retail, 2600 as [Retail++], 500 as Discount, '2015-03-27' as FirstPaymentDt, 0 as Months, 0 as PaymentFrequency
-
-SET IDENTITY_INSERT [Policy].[Policy] OFF;
-
-
-select * from Policy.Policy
-
+select top 100 * from car.car
+select Make, count(*) from car.car group by Make
 -------------------------------------------------------------------------------------------------------- */
+
+
 -- select top 100 * from [Policy].[Policy]
 
 --******************************************
@@ -1075,4 +1103,72 @@ select * from [Pay].[Sale]
 --*****************************
 DROP table [dbo].[Tmp];
 GO
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Put some sample in to get us going.
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/*
+SET IDENTITY_INSERT [Policy].[Policy] ON;
+
+DECLARE @CompanyId_Sunpath int = (SELECT CompanyId FROM [Policy].[Company] WHERE Company = 'SunPath');
+DECLARE @PayPlanId int = (SELECT PayPlanId from [Policy].[PayPlan] WHERE Name = 'Bizkit');
+DECLARE @EmplId_Tawny int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
+DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
+select @EmplId_Chainz
+
+INSERT [Policy].[Policy] (	PolicyId, CompanyId, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
+							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months, PaymentFrequency )
+
+SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
+		2105 as Retail, 2600 as [Retail++], 500 as Discount, 1605 as TotalCost, 595 as AdminCost, 1010 as GrossProfit,
+		'2015-03-27' as FirstPaymentDt, 0 as Months, 0 as PaymentFrequency
+
+SET IDENTITY_INSERT [Policy].[Policy] OFF;
+
+select * from Policy.Policy
+
+-------------------------
+-- Hire some screeners
+-------------------------
+select * from employee.employee
+
+DECLARE @RoleId int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener')
+DECLARE @RateId int = (SELECT RateId from [Employee].[Rate] WHERE Name = 'Probation')
+
+INSERT [Employee].[Employee] (RoleId, RateId, FirstName, HireDt)
+select @RoleId, @RateId, 'Kitty', '2015-04-15' union
+select @RoleId, @RateId, 'Chad', '2015-04-15' union
+select @RoleId, @RateId, 'Smith', '2015-04-15' union
+select @RoleId, @RateId, 'Julie', '2015-04-15' union
+select @RoleId, @RateId, 'Kelly', '2015-04-15'
+GO
+
+*/
+
+/*
+select * from Policy.Policy
+select * from employee.employee
+select * from employee.day
+*/
+
+-- add housrs worked
+/*
+truncate table [Employee].[Day];
+
+DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
+select @EmplId_Chainz
+
+insert [Employee].[Day] (EmplId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+select @EmplId_Chainz, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
+select @EmplId_Chainz, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
+select @EmplId_Chainz, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
+select @EmplId_Chainz, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 union
+
+select * from employee.day
+
+select 2, '2015-04-13'
+*/
+
+
 
