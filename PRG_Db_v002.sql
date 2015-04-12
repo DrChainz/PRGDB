@@ -11,6 +11,10 @@ GO
 USE [PRG];
 GO
 
+create table [dbo].[Tmp] ( LoadData char(1) NOT NULL );
+INSERT [dbo].[Tmp] SELECT 'Y';
+GO
+
 ---------------------------------------
 -- Schemas
 ---------------------------------------
@@ -337,12 +341,16 @@ CREATE TABLE [Legend].[FirstName]
 ) ON [PRIMARY]
 GO
 
-/*	-- save time while testing
-INSERT [Legend].[FirstName] (FirstName, Cnt, BadName)
-SELECT FirstName, Cnt, BadName
-FROM [QSM].[Legend].[FirstName]
+-- save time while testing
+
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+	INSERT [Legend].[FirstName] (FirstName, Cnt, BadName)
+	SELECT FirstName, Cnt, BadName
+	FROM [QSM].[Legend].[FirstName]
+END
 GO
-*/
 
 -- Figure out how to create the SIC tables correctly.
 -- this also likely oughta have a log entry associated with it such that we know
@@ -431,7 +439,8 @@ CREATE TABLE [DNC].[LandlineToWireless]
 ) ON [PRIMARY]
  GO
 
-IF (1=0)
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
 BEGIN
 	INSERT [DNC].[WirelessBlocks] ( NPA, NXX, X, CATEGORY, PhoneBegin )
 	SELECT  NPA, NXX, X, CATEGORY, PhoneBegin
@@ -482,8 +491,7 @@ FOREIGN KEY ([State]) REFERENCES [Legend].[State](State)
 INSERT [Car].[StateExclude] (State)
 SELECT State
 FROM [PrivateReserve].[Legend].[ExcludeState]
- GO
-
+GO
 
 ---------------------------------------
 --
@@ -594,15 +602,15 @@ FOREIGN KEY ([Make]) REFERENCES [Car].[Make](Make)
 );
 GO
 
-/*
--- select count(*) from car.car
-
-INSERT [Car].[Car] (VIN, Make, Model, Year)
-select VIN, Make, Model, Year
-from [QSM].[CarData].[Car]
-where Model in (select Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
--- GO
-*/
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+	INSERT [Car].[Car] (VIN, Make, Model, Year)
+	select VIN, Make, Model, Year
+	from [QSM].[CarData].[Car]
+	where Model in (select Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
+END
+GO
 
 --------------------------------------------------------------------------------------------------------------------
 --  drop table [Car].[CarPhone]
@@ -626,21 +634,18 @@ GO
 CREATE UNIQUE INDEX PK_CarPhone ON [Car].[CarPhone] ( VIN, Phone );
 GO
 
-/*
--- truncate table [Car].[CarPhone]
-
-insert [Car].[CarPhone] (VIN, Phone, Wireless, FirstName, LastName, Address, City, State, Zip)
-select VIN, Phone, Wireless, FirstName, LastName, Address, City, State, Zip
-from [QSM].[CarData].[CarPhone]
-where State in (select State FROM Legend.State)
-  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-  and VIN in (select VIN FROM [Car].[Car])
-  and STate not in (select State from [Car].[StateExclude])
-
-*/
-
--- select top 100 * from [Car].[CarPhone]
-
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+	INSERT [Car].[CarPhone] (VIN, Phone, Wireless, FirstName, LastName, Address, City, State, Zip)
+	SELECT VIN, Phone, Wireless, FirstName, LastName, Address, City, State, Zip
+	FROM [QSM].[CarData].[CarPhone]
+	WHERE State in (select State FROM Legend.State)
+	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+	  and VIN in (select VIN FROM [Car].[Car])
+	  and STate not in (select State from [Car].[StateExclude])
+END
+GO
 
 --------------------------------------------------------------------------------------------------------------------
 --  This table is only to be used to put data into so that it can be extracted in the correct format to be loaded
@@ -673,14 +678,7 @@ GO
 CREATE Schema [Employee];
 GO
 
--- DROP TABLE [Employee].[EmployeeDay];
--- DROP TABLE [Employee].[Employee]
--- DROP TABLE [Employee].[Type]
--- DROP TABLE [Employee].[Rate]
--- 
---
-
----------------------------------------
+--------------------------------------
 --
 -----------------------------------------
 CREATE TABLE [Employee].[Rate]
@@ -691,8 +689,6 @@ CREATE TABLE [Employee].[Rate]
 PRIMARY KEY ([RateId])
 ) ON [PRIMARY]
 GO
-
--- SET IDENTITY_INSERT [PRG].[Legend].[Disp] OFF;
 
 SET IDENTITY_INSERT [Employee].[Rate] ON;
 INSERT [Employee].[Rate] (RateId, Name, HrPay)
@@ -725,19 +721,10 @@ SELECT 3, 'Closer', NULL UNION
 SELECT 4, 'T.O.', NULL
 SET IDENTITY_INSERT [Employee].[Role] OFF;
 GO
--- select * from employee.type
-
-
--- select * from [Employee].[GravyMod_Downpayment]
-
-
--- select * from [Employee].[GravyMod_Discount]
-
 
 ---------------------------------------
---
------------------------------------------
 -- drop TABLE [Employee].[Employee]
+-----------------------------------------
 CREATE TABLE [Employee].[Employee]
 (
 	[EmplId]			[int]				NOT NULL	IDENTITY(1,1),
@@ -765,20 +752,17 @@ SELECT 3, 2, 5, 'Chainz' union
 select 4, 1, 2, 'Prego'
 SET IDENTITY_INSERT [Employee].[Employee] OFF;
 
-select e.FirstName, 
-select * from Employee.Rate
-
-
+/*
 select e.FirstName, o.Role, r.Name
 from [Employee].[Employee] e, [Employee].[Role] o, [Employee].[Rate] r
 where e.RateId = r.RateId
   and e.RoleId = o.RoleId
-
+*/
 
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Employee].[EmployeeDay]
+CREATE TABLE [Employee].[Day]
 (
 	[EmplId]			[int]				NOT NULL	IDENTITY(1,1),
 	[Dt]				[smalldatetime]		NOT NULL,
@@ -791,30 +775,8 @@ FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt)
 );
 GO
 
-/*
-select *, from Legend.Day where Week = 5
-
-select min(dt), max(dt) from Legend.Day where Week = 5
-
-select * from Car.Car
-
-select * from Car.Make
-
-select * from Legend.State
-where TimeZone = 'EST'
-
-select * from Legend.TimeZone
-
-
-select * from [Employee].[Employee]
-
-select * from [Employee].[EmployeeDay]
-
-
-CREATE UNIQUE INDEX PK_EmployeeDay ON [Employee].[EmployeeDay] ([EmplId], [Dt])
+CREATE UNIQUE INDEX PK_EmployeeDay ON [Employee].[Day] ([EmplId], [Dt])
 GO
-
-*/
 
 --***************************************
 --
@@ -835,7 +797,6 @@ SELECT 'DNC', 'Do Not Call' UNION
 SELECT 'A', 'Answering Machine' UNION
 SELECT 'NI', 'Not Interested'
 GO
-
 
 --***************************************
 --
@@ -881,10 +842,25 @@ SELECT 18 UNION
 SELECT 24;
 GO
 
--- select * from [Policy].[Term]
+---------------------------------------
+-- drop table [Policy].[PayPlan]
+-----------------------------------------
+CREATE TABLE [Policy].[PayPlan]
+(
+	[PayPlanId]		[int]			NOT NULL	IDENTITY(1,1),
+	[Name]			varchar(30)		NOT NULL	UNIQUE,
+	[RoleId]		[int]			NOT NULL
+PRIMARY KEY (PayPlanId),
+FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
+);
+GO
 
-
---  select * from [Employee].[GravyMod_Term]
+DECLARE @RoleId_Closer int = (SELECT RoleId FROM [Employee].[Role] WHERE Role = 'Closer');
+SET IDENTITY_INSERT [Policy].[PayPlan] ON;
+INSERT [Policy].[PayPlan] (PayPlanId, Name, RoleId)
+SELECT 1, 'Bizkit', @RoleId_Closer ;
+SET IDENTITY_INSERT [Policy].[PayPlan] OFF;
+GO
 
 ---------------------------------------
 -- drop table [Policy].[Policy]
@@ -893,7 +869,10 @@ CREATE TABLE [Policy].[Policy]
 (
 	[PolicyId]			[int]				NOT NULL	IDENTITY(1,1),
 	[CompanyId]			[int]				NOT NULL,
-	[EmplId]			[int]				NOT NULL,
+	[Front_EmplId]		[int]				NOT NULL,
+	[Sale_EmplId]		[int]				NOT NULL,
+	[TO_EmplId]			[int]				NULL,
+	[PayPlanId]			[int]				NOT NULL,
 	[Vin]				[Car].[Vin]			NOT NULL,
 	[ClosingDt]			[smalldatetime]		NOT NULL,
 	[SaleCnt]			[tinyint]			NOT NULL,
@@ -906,17 +885,17 @@ CREATE TABLE [Policy].[Policy]
 	[PaymentFrequency]	[int]				NULL,
 PRIMARY KEY ([PolicyId]),
 FOREIGN KEY ([CompanyId]) REFERENCES [Policy].[Company] (CompanyId),
-FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([Front_EmplId]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([Sale_EmplId]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId),
 FOREIGN KEY ([Vin]) REFERENCES [Car].[Car] (Vin),
 FOREIGN KEY ([ClosingDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([Months]) REFERENCES [Policy].[Term] (Months)
 );
 GO
 
-CREATE UNIQUE INDEX UK_Policy_EmplId_ClosingDt_SaleCnt ON [Policy].[Policy] ([EmplId], [ClosingDt], [SaleCnt] );
+CREATE UNIQUE INDEX UK_Policy_EmplId_ClosingDt_SaleCnt ON [Policy].[Policy] ([Sale_EmplId], [ClosingDt], [SaleCnt] );
 GO
-
--- select top 100 * from car.car where make = 'kia'
 
 /* --------------------------------------------------------------------------------------------------------
 
@@ -935,78 +914,55 @@ SET IDENTITY_INSERT [Policy].[Policy] OFF;
 select * from Policy.Policy
 
 -------------------------------------------------------------------------------------------------------- */
-
-
 -- select top 100 * from [Policy].[Policy]
 
---***************************************
---
---***************************************
+--******************************************
+-- Pay Schema
+--******************************************
 CREATE Schema [Pay];
 GO
 
-drop table [Pay].[GravyMod_Term];
-drop table [Pay].[GravyMod_Downpayment];
-drop table [Pay].[GravyMod_Discount];
-drop table [Pay].[Plan];
-
 ---------------------------------------
--- 
+-- drop table [Pay].[Sale]
 -----------------------------------------
-CREATE TABLE [Pay].[Plan]
+CREATE TABLE [Pay].[Sale]
 (
-	[PlanId]		[int]			NOT NULL	IDENTITY(1,1),
-	[Name]			varchar(30)		NOT NULL	UNIQUE,
-	[RoleId]		[int]			NOT NULL
-PRIMARY KEY (PlanId),
-FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
-);
-GO
-
--- select * from employee.role
-
-DECLARE @RoleId_Closer int = (SELECT RoleId FROM [Employee].[Role] WHERE Role = 'Closer');
-SET IDENTITY_INSERT [Pay].[Plan] ON;
-INSERT [Pay].[Plan] (PlanId, Name, RoleId)
-SELECT 1, 'Bizkit', @RoleId_Closer ;
-SET IDENTITY_INSERT [Pay].[Plan] OFF;
-
----------------------------------------
--- 
------------------------------------------
-CREATE TABLE [Pay].[SaleBase]
-(
-	[PlanId]		[int]			NOT NULL,
-	[SaleCnt]		[tinyint]		NOT NULL,
-	[Multiplier]	[money]			NOT NULL
-FOREIGN KEY ([PlanId]) REFERENCES [Pay].[Plan] ( PlanId )
+	[PayPlanId]		[int]			NOT NULL,
+	[Cnt]			[tinyint]		NOT NULL,
+	[Multiplier]	[money]			NOT NULL,
+	[Gravy]			[money]			NOT NULL
+FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] ( PayPlanId )
 )
 GO
 
-INSERT [Pay].[SaleBase] (PlanId, SaleCnt, Multiplier)
-select 1, 1, 90 union
-select 1, 2, 95 union
-select 1, 3, 115 union
-select 1, 4, 130 union
-select 1, 5, 150 union
-select 1, 6, 150 -- need to figure out what the software does for sales beyond this - i.e., only keep the last number or 
+CREATE UNIQUE INDEX PK_Pay_Sale ON [Pay].[Sale] ( [PayPlanId], [Cnt] );
+GO
+
+INSERT [Pay].[Sale] (PayPlanId, Cnt, Multiplier, Gravy)
+select 1, 1,  90, 250 union
+select 1, 2,  95, 250 union
+select 1, 3, 115, 250 union
+select 1, 4, 130, 250 union
+select 1, 5, 150, 250 union
+select 1, 6, 150, 250 -- need to figure out what the software does for sales beyond this - i.e., only keep the last number or 
+GO
 
 ---------------------------------------
 --
 -----------------------------------------
 CREATE TABLE [Pay].[SalePIF]
 (
-	[PlanId]		[int]			NOT NULL,
+	[PayPlanId]		[int]			NOT NULL,
 	[Discount]		[money]			NOT NULL,
 	[Bonus]			[money]			NOT NULL,
-FOREIGN KEY ([PlanId]) REFERENCES [Pay].[Plan] ( PlanId )
+FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] ( PayPlanId )
 );
 GO
 
-CREATE UNIQUE INDEX PK_SalePIF ON [Pay].[SalePIF] (PlanId, Discount);
+CREATE UNIQUE INDEX PK_SalePIF ON [Pay].[SalePIF] (PayPlanId, Discount);
 GO
 
-INSERT [Pay].[SalePIF] (PlanId, Discount, Bonus)
+INSERT [Pay].[SalePIF] (PayPlanId, Discount, Bonus)
 select 1,   0, 450 union
 select 1, 100, 440 union
 select 1, 200, 420 union
@@ -1019,25 +975,22 @@ select 1, 800, 210
 ;
 GO
 
--- select * from pay.SalePIF;
-
----------------------------------------
+--------------------------------------------------
 -- drop table [Employee].[GravyMod_Downpayment]
------------------------------------------
--- drop TABLE [Pay].[GravyMod_DownPayment]
+--------------------------------------------------
 CREATE TABLE [Pay].[GravyMod_Payment]
 (
-	[PlanId]		[int]		NOT NULL,
+	[PayPlanId]		[int]		NOT NULL,
 	[Down]			[money]		NOT NULL,
 	[Subtract]		[money]		NOT NULL
-FOREIGN KEY ([PlanId]) REFERENCES [Pay].[Plan] (PlanId)
+FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId)
 )
 GO
 
-CREATE UNIQUE INDEX PK_GravyMod_Payment ON [Pay].[GravyMod_Payment] ( [PlanId], [Down] );
+CREATE UNIQUE INDEX PK_GravyMod_Payment ON [Pay].[GravyMod_Payment] ( [PayPlanId], [Down] );
 GO
 
-INSERT [Pay].[GravyMod_Payment] (PlanId, Down, Subtract )
+INSERT [Pay].[GravyMod_Payment] (PayPlanId, Down, Subtract )
 select 1, 995,  0 union
 select 1, 895, 10 union
 select 1, 795, 20 union
@@ -1049,24 +1002,22 @@ select 1, 295, 70 union
 select 1, 195, 80;
 go
 
--- select * from [Pay].[GravyMod_Payment];
-
 ---------------------------------------
 --  This is the amonth that is discounted from the retail price
 -----------------------------------------
 CREATE TABLE [Pay].[GravyMod_Retail]
 (
-	[PlanId]			[int]		NOT NULL,
+	[PayPlanId]			[int]		NOT NULL,
 	[Discount]			[money]		NOT NULL,
 	[Subtract]			[money]		NOT NULL
-FOREIGN KEY ([PlanId]) REFERENCES [Pay].[Plan] (PlanId)
+FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId)
 );
 GO
 
-CREATE UNIQUE INDEX PK_GravyMod_Retail ON [Pay].[GravyMod_Retail] ( [PlanId], [Discount] );
+CREATE UNIQUE INDEX PK_GravyMod_Retail ON [Pay].[GravyMod_Retail] ( [PayPlanId], [Discount] );
 GO
 
-INSERT [Pay].[GravyMod_Retail] ( PlanId, Discount, Subtract )
+INSERT [Pay].[GravyMod_Retail] ( PayPlanId, Discount, Subtract )
 select 1, 100, 5 union
 select 1, 200, 15 union
 select 1, 300, 35 union
@@ -1078,26 +1029,25 @@ select 1, 800, 130
 ;
 GO
 
-select * from [Pay].[GravyMod_Discount]
-
+-- select * from [Pay].[GravyMod_Retail];
 
 ---------------------------------------
 -- drop table [Employee].[GravyMod_Term]
 -----------------------------------------
 CREATE TABLE [Pay].[GravyMod_Term]
 (
-	[PlanId]			[int]		NOT NULL,
+	[PayPlanId]			[int]		NOT NULL,
 	[Months]			[smallint]	NOT NULL,
 	[Subtract]			[money]		NOT NULL
-FOREIGN KEY ([PlanId]) REFERENCES [Pay].[Plan] (PlanId),
+FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId),
 FOREIGN KEY ([Months]) REFERENCES [Policy].[Term] (Months)
 );
 GO
 
-CREATE UNIQUE INDEX PK_GravyMod_Term ON [Pay].[GravyMod_Term] ( [PlanId], [Months] );
+CREATE UNIQUE INDEX PK_GravyMod_Term ON [Pay].[GravyMod_Term] ( [PayPlanId], [Months] );
 GO
 
-INSERT [Pay].[GravyMod_Term] ( PlanId, Months, Subtract )
+INSERT [Pay].[GravyMod_Term] ( PayPlanId, Months, Subtract )
 SELECT 1, 0,   0 union
 SELECT 1, 6,   0 union
 SELECT 1, 9,  10 union
@@ -1110,11 +1060,19 @@ GO
 ------------------------------------------
 -- 
 ------------------------------------------
-select * from [Pay].[Plan]
-select * from [Pay].[GravyMod_Payment]
-select * from [Pay].[GravyMod_Retail]
-select * from [Pay].[GravyMod_Term]
-select * from [Pay].[SalePIF]
-select * from [Pay].[SaleBase]
-
+/*
+select * from [Policy].[PayPlan];
+select * from [Pay].[GravyMod_Payment];
+select * from [Pay].[GravyMod_Retail];
+select * from [Pay].[GravyMod_Term];
+select * from [Pay].[SalePIF];
+select * from [Pay].[Sale]
+*/
 -- select * from pay.salebase
+
+--*****************************
+-- Clean Up
+--*****************************
+DROP table [dbo].[Tmp];
+GO
+
