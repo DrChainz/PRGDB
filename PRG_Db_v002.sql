@@ -800,17 +800,22 @@ where e.RateId = r.RateId
 CREATE TABLE [Employee].[Day]
 (
 	[EmplId]			[int]				NOT NULL,
+	[RoleId]			[int]				NOT NULL,
 	[Dt]				[smalldatetime]		NOT NULL,
 	[StartTm]			[smalldatetime]		NOT NULL,
 	[EndTm]				[smalldatetime]		NULL,
 	[TransferCnt]		[smallint]			NULL,
 	[CloseCnt]			[smallint]			NULL
 FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] (EmplId),
-FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt)
+FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
 );
 GO
 
-CREATE UNIQUE INDEX PK_EmployeeDay ON [Employee].[Day] ([EmplId], [Dt])
+--------------------------------------------------------------------------------
+-- An employee can be/play/work as one or more roles in a day
+--------------------------------------------------------------------------------
+CREATE UNIQUE INDEX PK_EmployeeDay ON [Employee].[Day] ([EmplId], [RoleId], [Dt])
 GO
 
 --***************************************
@@ -904,6 +909,7 @@ CREATE TABLE [Policy].[Policy]
 (
 	[PolicyId]			[int]				NOT NULL	IDENTITY(1,1),
 	[CompanyId]			[int]				NOT NULL,
+	[CompanyPolicyNum]	[varchar](20)		NULL,
 	[Front_EmplId]		[int]				NOT NULL,
 	[Sale_EmplId]		[int]				NOT NULL,
 	[TO_EmplId]			[int]				NULL,
@@ -920,7 +926,10 @@ CREATE TABLE [Policy].[Policy]
 	[GrossProfit]		[money]				NOT NULL,
 	[FirstPaymentDt]	[smalldatetime]		NULL,
 	[Months]			[smallint]			NOT NULL,
-	[PaymentFrequency]	[int]				NULL,
+	[IsCancelled]		[Legend].[YesNo]	NOT NULL,
+	[CancelDt]			[smalldatetime]		NULL,
+	[CancelReturnAmt]	[money]				NULL,
+-- 	[PaymentFrequency]	[int]				NULL,		-- likely the same as the months - need to do some investigation
 PRIMARY KEY ([PolicyId]),
 FOREIGN KEY ([CompanyId]) REFERENCES [Policy].[Company] (CompanyId),
 FOREIGN KEY ([Front_EmplId]) REFERENCES [Employee].[Employee] (EmplId),
@@ -928,6 +937,7 @@ FOREIGN KEY ([Sale_EmplId]) REFERENCES [Employee].[Employee] (EmplId),
 FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId),
 FOREIGN KEY ([Vin]) REFERENCES [Car].[Car] (Vin),
 FOREIGN KEY ([ClosingDt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([CancelDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([Months]) REFERENCES [Policy].[Term] (Months)
 );
 GO
@@ -935,13 +945,25 @@ GO
 CREATE UNIQUE INDEX UK_Policy_EmplId_ClosingDt_SaleCnt ON [Policy].[Policy] ([Sale_EmplId], [ClosingDt], [SaleCnt] );
 GO
 
+---------------------------------------
+-- drop table [Policy].[Payment]
+-----------------------------------------
+(
+	[PaymentId]			[int]				NOT NULL	IDENTITY(1,1),
+	[PolicyId]			[int]				NOT NULL,
+	[PaymentDt]			[smalldatetime]		NOT NULL,
+	[Payment]			[money]				NOT NULL
+FOREIGN KEY ([PolicyId]) REFERENCES [Policy].[Policy] (PolicyId),
+FOREIGN KEY ([PaymentDt]) REFERENCES [Legend].[Day] (Dt),
+
+);
+GO
+
 /* --------------------------------------------------------------------------------------------------------
 
 select top 100 * from car.car
 select Make, count(*) from car.car group by Make
 -------------------------------------------------------------------------------------------------------- */
-
-
 -- select top 100 * from [Policy].[Policy]
 
 --******************************************
@@ -1155,19 +1177,38 @@ select * from employee.day
 -- add housrs worked
 /*
 truncate table [Employee].[Day];
+select * from Employee.Employee
+select * from Employee.Role
 
 DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
-select @EmplId_Chainz
+DECLARE @EmplId_Tawney int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
+DECLARE @EmplId_GuzJr int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Guz Jr');
+DECLARE @EmplId_Prego int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Prego');
 
+DECLARE @RoleId_Screener in = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener');
+DECLARE @RoleId_Closer in = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Closer');
+
+-- select @EmplId_Chainz
+
+---------------------------------------------------------------------------------------------
+--  Chainz Works as a screener
+---------------------------------------------------------------------------------------------
 insert [Employee].[Day] (EmplId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-select @EmplId_Chainz, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
-select @EmplId_Chainz, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
-select @EmplId_Chainz, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
-select @EmplId_Chainz, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 union
+select @EmplId_Chainz, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
+select @EmplId_Chainz, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
+select @EmplId_Chainz, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
+select @EmplId_Chainz, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
 
 select * from employee.day
 
+
+
+
+
 select 2, '2015-04-13'
+
+
+
 */
 
 
