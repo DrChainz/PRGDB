@@ -250,6 +250,7 @@ CREATE TABLE [Legend].[Day]
 	[WeekDayNum]	[tinyint]				NOT NULL,
  	[WeekDay]		[Legend].[WeekDay]		NOT NULL,
 	[Payday]		[Legend].[YesNo]		NOT NULL,
+	[PayPeriod]		[tinyint]				NOT NULL,
 	[Week]			[smallint]				NOT NULL,
 	[Year]			[Legend].[Year]			NOT NULL,
 	[Month]			[tinyint]				NOT NULL,
@@ -284,6 +285,7 @@ SET NOCOUNT ON;
 		WeekDayNum	tinyint			NULL,
 		WeekDay		varchar(9)		NULL,
 		Payday		char(1)			NULL,
+		PayPeriod	tinyint			NULL,
 		Week		smallint		NULL,
 		Year		char(4)			NULL,
 		Month		tinyint			NULL,
@@ -332,8 +334,32 @@ SET NOCOUNT ON;
 	update @Days set Payday = 'Y'
 	where WeekDay = 'Friday' and (Week % 2) = 0;
 
-	INSERT [Legend].[Day] ( Dt, WeekDayNum, WeekDay, Payday, Week, Year, Month, YearMonth, Qtr )
-	SELECT Dt, WeekDayNum, WeekDay, Payday, Week, Year, Month, YearMonth, Qtr
+-- 	DECLARE @Dt smalldatetime;
+	DECLARE @Payday char(1);
+	DECLARE @PayPeriod tinyint = 1;
+
+	DECLARE pay_period_cursor CURSOR FOR
+	SELECT Dt, Payday
+	FROM @Days FOR UPDATE;
+
+	OPEN pay_period_cursor
+	FETCH NEXT FROM pay_period_cursor INTO @Dt, @Payday
+
+	WHILE @@FETCH_STATUS = 0   
+	BEGIN   
+       UPDATE @Days SET PayPeriod = @PayPeriod WHERE CURRENT OF pay_period_cursor;
+
+       FETCH NEXT FROM pay_period_cursor INTO @Dt, @Payday
+
+	   IF (@Payday = 'Y')
+			SET @PayPeriod += 1;
+	END   
+
+	CLOSE pay_period_cursor
+	DEALLOCATE pay_period_cursor
+
+	INSERT [Legend].[Day] ( Dt, WeekDayNum, WeekDay, Payday, PayPeriod, Week, Year, Month, YearMonth, Qtr )
+	SELECT Dt, WeekDayNum, WeekDay, Payday, PayPeriod, Week, Year, Month, YearMonth, Qtr
 	FROM @Days
 	WHERE Dt NOT IN (select Dt FROM [Legend].[Day])
 	;
@@ -914,10 +940,11 @@ CREATE TABLE [Policy].[Policy]
 	[Sale_EmplId]		[int]				NOT NULL,
 	[TO_EmplId]			[int]				NULL,
 	[PayPlanId]			[int]				NOT NULL,
-	[Vin]				[Car].[Vin]			NOT NULL,
+	[Vin]				[Car].[Vin]			NOT NULL,	-- think that we can never write duplicate policies on a single car ???
 	[ClosingDt]			[smalldatetime]		NOT NULL,
 	[SaleCnt]			[tinyint]			NOT NULL,
 	[PaidInFull]		[Legend].[YesNo]	NOT NULL,
+	[DownPayment]		[money]				NULL,
 	[Retail++]			[money]				NOT NULL,
 	[Retail]			[money]				NOT NULL,
 	[Discount]			[money]				NOT NULL,
@@ -948,11 +975,12 @@ GO
 ---------------------------------------
 -- drop table [Policy].[Payment]
 -----------------------------------------
+CREATE TABLE [Policy].[Payment]
 (
 	[PaymentId]			[int]				NOT NULL	IDENTITY(1,1),
 	[PolicyId]			[int]				NOT NULL,
 	[PaymentDt]			[smalldatetime]		NOT NULL,
-	[Payment]			[money]				NOT NULL
+	[Payment]			[money]				NOT NULL,
 FOREIGN KEY ([PolicyId]) REFERENCES [Policy].[Policy] (PolicyId),
 FOREIGN KEY ([PaymentDt]) REFERENCES [Legend].[Day] (Dt),
 
@@ -1028,19 +1056,19 @@ GO
 --------------------------------------------------
 -- drop table [Employee].[GravyMod_Downpayment]
 --------------------------------------------------
-CREATE TABLE [Pay].[GravyMod_Payment]
+CREATE TABLE [Pay].[GravyMod_DownPayment]
 (
 	[PayPlanId]		[int]		NOT NULL,
-	[Down]			[money]		NOT NULL,
+	[DownPayment]	[money]		NOT NULL,
 	[Subtract]		[money]		NOT NULL
 FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId)
 )
 GO
 
-CREATE UNIQUE INDEX PK_GravyMod_Payment ON [Pay].[GravyMod_Payment] ( [PayPlanId], [Down] );
+CREATE UNIQUE INDEX PK_GravyMod_DownPayment ON [Pay].[GravyMod_DownPayment] ( [PayPlanId], [DownPayment] );
 GO
 
-INSERT [Pay].[GravyMod_Payment] (PayPlanId, Down, Subtract )
+INSERT [Pay].[GravyMod_DownPayment] (PayPlanId, DownPayment, Subtract )
 select 1, 995,  0 union
 select 1, 895, 10 union
 select 1, 795, 20 union
@@ -1051,6 +1079,9 @@ select 1, 395, 60 union
 select 1, 295, 70 union
 select 1, 195, 80;
 go
+
+-- ALTER TABLE [Policy].[Policy] ADD CONSTRAINT fk_Policy_DownPayment FOREIGN KEY (DownPayment) REFERENCES [Pay].[GravyMod_DownPayment](DownPayment);
+
 
 ---------------------------------------
 --  This is the amonth that is discounted from the retail price
@@ -1131,24 +1162,6 @@ GO
 -- Put some sample in to get us going.
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /*
-SET IDENTITY_INSERT [Policy].[Policy] ON;
-
-DECLARE @CompanyId_Sunpath int = (SELECT CompanyId FROM [Policy].[Company] WHERE Company = 'SunPath');
-DECLARE @PayPlanId int = (SELECT PayPlanId from [Policy].[PayPlan] WHERE Name = 'Bizkit');
-DECLARE @EmplId_Tawny int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
-DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
-select @EmplId_Chainz
-
-INSERT [Policy].[Policy] (	PolicyId, CompanyId, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
-							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months, PaymentFrequency )
-
-SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
-		2105 as Retail, 2600 as [Retail++], 500 as Discount, 1605 as TotalCost, 595 as AdminCost, 1010 as GrossProfit,
-		'2015-03-27' as FirstPaymentDt, 0 as Months, 0 as PaymentFrequency
-
-SET IDENTITY_INSERT [Policy].[Policy] OFF;
-
-select * from Policy.Policy
 
 -------------------------
 -- Hire some screeners
@@ -1176,32 +1189,138 @@ select * from employee.day
 
 -- add housrs worked
 /*
-truncate table [Employee].[Day];
+-- truncate table [Employee].[Day];
+select * from employee.Day
+
 select * from Employee.Employee
 select * from Employee.Role
 
-DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
-DECLARE @EmplId_Tawney int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
-DECLARE @EmplId_GuzJr int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Guz Jr');
-DECLARE @EmplId_Prego int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Prego');
-
-DECLARE @RoleId_Screener in = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener');
-DECLARE @RoleId_Closer in = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Closer');
-
--- select @EmplId_Chainz
-
+--****************
+-- ** Start Here
+--****************
+DECLARE @RoleId_Screener int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener');
+DECLARE @RoleId_Closer int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Closer');
 ---------------------------------------------------------------------------------------------
 --  Chainz Works as a screener
 ---------------------------------------------------------------------------------------------
-insert [Employee].[Day] (EmplId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
+insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
 select @EmplId_Chainz, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
 select @EmplId_Chainz, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
 select @EmplId_Chainz, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
 select @EmplId_Chainz, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+;
+
+---------------------------------------------------------------------------------------------
+--  GuzJr Works as a screener
+---------------------------------------------------------------------------------------------
+DECLARE @EmplId_GuzJr int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Guz Jr');
+insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+select @EmplId_GuzJr, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
+select @EmplId_GuzJr, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
+select @EmplId_GuzJr, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
+select @EmplId_GuzJr, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+;
+
+---------------------------------------------------------------------------------------------
+--  Prego Works as a screener
+---------------------------------------------------------------------------------------------
+DECLARE @EmplId_Prego int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Prego');
+insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+select @EmplId_Prego, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 4, 0 union
+select @EmplId_Prego, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 0 union
+select @EmplId_Prego, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 2, 0 union
+select @EmplId_Prego, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 2, 0 -- union
+;
+
+---------------------------------------------------------------------------------------------
+--  Tawney Works as a screener
+---------------------------------------------------------------------------------------------
+DECLARE @EmplId_Tawney int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
+insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+select @EmplId_Tawney, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
+select @EmplId_Tawney, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
+select @EmplId_Tawney, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
+select @EmplId_Tawney, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+;
+
+---------------------------------------------------------------------------------------------
+--  Tawney Works as a Closer
+---------------------------------------------------------------------------------------------
+insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+select @EmplId_Tawney, @RoleId_Closer, '2015-03-27', '2015-03-27 12:45am', '2015-03-27 1:00pm', 0, 1 -- union
+;
+
 
 select * from employee.day
 
+---------------------------------------------------------------------------------------------
+--  Write some policies
+---------------------------------------------------------------------------------------------
+SET IDENTITY_INSERT [Policy].[Policy] ON;
 
+-- select top 100 * from car.car where year = '2011'
+
+DECLARE @CompanyId_Sunpath int = (SELECT CompanyId FROM [Policy].[Company] WHERE Company = 'SunPath');
+DECLARE @PayPlanId int = (SELECT PayPlanId from [Policy].[PayPlan] WHERE Name = 'Bizkit');
+DECLARE @EmplId_Tawny int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
+DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
+--  select @EmplId_Chainz
+
+/*
+INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
+							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
+
+SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC123' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
+		2105 as Retail, 2600 as [Retail++], 500 as Discount, 1605 as TotalCost, 595 as AdminCost, 1010 as GrossProfit,
+		'2015-03-27' as FirstPaymentDt, 0 as Months  -- , 0 as PaymentFrequency
+;
+*/
+
+--delete policy.policy where policyId = 2
+
+INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull,
+							DownPayment, Retail, [Retail++], Discount,
+							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
+
+SELECT	2 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC124' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '19UUA8F20BA000150' as VIN,
+		'2015-03-27' as ClosingDt, 2 as SaleCnt, 'N' as PaidInFull, 295 as DownPayment,
+		2300 as Retail, 2800 as [Retail++], 200 as Discount, 2100 as TotalCost, 795 as AdminCost, 1305 as GrossProfit,
+		'2015-03-27' as FirstPaymentDt, 12 as Months  -- , 0 as PaymentFrequency
+;
+
+-- select * from [Pay].[GravyMod_Payment]
+
+
+SET IDENTITY_INSERT [Policy].[Policy] OFF;
+
+select * from Policy.Policy
+
+
+
+
+select *
+from Legend.Day
+where Payday = 'Y'
+and Dt = '2015-04-17'
+
+-----------------------------------------------
+--
+-----------------------------------------------
+IF OBJECT_ID(N'up_PayDay') IS NOT NULL
+	DROP PROC UP_PayDay;
+GO
+
+CREATE PROC up_PayDay
+	@Week smallint = 16
+AS
+	DECLARE @PayPeriod_BeginDt smalldatetime;
+	DECLARE @PayPeriod_EndDt smalldatetime;
+
+	select @Week;
+GO
+
+exec up_PayDay;
 
 
 
