@@ -12,7 +12,7 @@ USE [PRG];
 GO
 
 create table [dbo].[Tmp] ( LoadData char(1) NOT NULL );
-INSERT [dbo].[Tmp] SELECT 'N';
+INSERT [dbo].[Tmp] SELECT 'Y';
 GO
 
 ---------------------------------------
@@ -538,6 +538,30 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
+CREATE TABLE [Car].[Year]
+(
+	Year		[Legend].[Year]		NOT NULL UNIQUE
+);
+GO
+
+INSERT [Car].[Year] (Year)
+SELECT '2005' UNION
+SELECT '2006' UNION
+SELECT '2007' UNION
+SELECT '2008' UNION
+SELECT '2009' UNION
+SELECT '2010' UNION
+SELECT '2011' UNION
+SELECT '2012' UNION
+SELECT '2013' UNION
+SELECT '2014' UNION
+SELECT '2015';
+GO
+
+
+---------------------------------------
+--
+-----------------------------------------
 CREATE TABLE [Car].[StateExclude]
 (
 	[State]	[dbo].[State]	NOT NULL UNIQUE
@@ -570,6 +594,21 @@ SELECT Make, FactoryWarrantyBasic_Yr, FactoryWarrantyBasic_Miles, FactoryWarrant
 FROM [PrivateReserve].[Car].[Make]
 GO
 
+/*
+delete [PrivateReserve].[Car].[Make] where Make = 'INFINITY'
+delete [Car].[Make] where Make = 'INFINITY'
+
+-- update Car.Make set Make = upper(Make)
+select * from Car.Make
+where Make not in (select Make from car.MakeExclude)
+
+select * from Car.Year
+select * from Car.StateExclude
+select * from DNC.AreaCd
+
+*/
+
+
 ---------------------------------------
 --
 -----------------------------------------
@@ -598,6 +637,8 @@ GO
 
 INSERT  [Car].[MakeExclude] (Make)
 select 'ASTON MARTIN' UNION
+select 'BENTLEY' UNION
+select 'RANGE ROVER' UNION
 select 'FERRARI' UNION
 select 'HONDA MOTORCYCLE' UNION
 select 'LAMBORGHINI' UNION
@@ -609,6 +650,20 @@ select 'TESLA' UNION
 select 'SMART' UNION
 select 'FISKER';
 GO
+
+
+--  select * from [Car].[MakeErr]
+
+--------------------------------------------------------
+-- What are all the valid Makes
+--------------------------------------------------------
+/*	-- test
+select *
+from [Car].[Make]
+where Make not in (select Make from [Car].[MakeExclude])
+  and Make not in (select MakeErr from [Car].[MakeErr])
+*/
+
 
 ---------------------------------------
 --
@@ -656,9 +711,20 @@ CREATE TABLE [Car].[Car]
 	[Model]			[varchar](30)		NOT NULL,
 	[Year]			[Legend].[Year]		NOT NULL,
 PRIMARY KEY ([VIN]),
-FOREIGN KEY ([Make]) REFERENCES [Car].[Make](Make)
+FOREIGN KEY ([Make]) REFERENCES [Car].[Make] ( Make ),
+FOREIGN KEY ([Year]) REFERENCES [Car].[Year] ( Year )
 );
 GO
+
+/*
+select * from car.year
+
+select Make, count(*)
+from [QSM].[CarData].[Car]
+where Make not in (select Make from [Car].[Make])
+group by Make
+*/
+
 
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
@@ -666,10 +732,14 @@ BEGIN
 	INSERT [Car].[Car] (VIN, Make, Model, Year)
 	select VIN, Make, Model, Year
 	from [QSM].[CarData].[Car]
-	where Model in (select Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
+	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
+	  and Make in (SELECT [Make] FROM [Car].[Make])
+	  and Year in (SELECT Year FROM [QSM].[CarData].[Year])
+	  and Exclude = 'N'
 --	  and Make = 'KIA' -- test 
 END
 GO
+
 
 --------------------------------------------------------------------------------------------------------------------
 --  drop table [Car].[CarPhone]
@@ -929,6 +999,7 @@ SET IDENTITY_INSERT [Policy].[PayPlan] OFF;
 GO
 
 ---------------------------------------
+-- drop table [Policy].[Payment]
 -- drop table [Policy].[Policy]
 -----------------------------------------
 CREATE TABLE [Policy].[Policy]
@@ -936,6 +1007,7 @@ CREATE TABLE [Policy].[Policy]
 	[PolicyId]			[int]				NOT NULL	IDENTITY(1,1),
 	[CompanyId]			[int]				NOT NULL,
 	[CompanyPolicyNum]	[varchar](20)		NULL,
+	[PolicyTerm]		[smallint]			NULL,
 	[Front_EmplId]		[int]				NOT NULL,
 	[Sale_EmplId]		[int]				NOT NULL,
 	[TO_EmplId]			[int]				NULL,
@@ -1151,12 +1223,6 @@ select * from [Pay].[Sale]
 */
 -- select * from pay.salebase
 
---*****************************
--- Clean Up
---*****************************
-DROP table [dbo].[Tmp];
-GO
-
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Put some sample in to get us going.
@@ -1194,69 +1260,80 @@ select * from employee.Day
 
 select * from Employee.Employee
 select * from Employee.Role
+*/
+GO
+
 
 --****************
 -- ** Start Here
 --****************
-DECLARE @RoleId_Screener int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener');
-DECLARE @RoleId_Closer int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Closer');
----------------------------------------------------------------------------------------------
---  Chainz Works as a screener
----------------------------------------------------------------------------------------------
-DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
-insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-select @EmplId_Chainz, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
-select @EmplId_Chainz, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
-select @EmplId_Chainz, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
-select @EmplId_Chainz, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
-;
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+	DECLARE @RoleId_Screener int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener');
+	DECLARE @RoleId_Closer int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Closer');
+	---------------------------------------------------------------------------------------------
+	--  Chainz Works as a screener
+	---------------------------------------------------------------------------------------------
+	DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
+	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmplId_Chainz, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
+	select @EmplId_Chainz, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
+	select @EmplId_Chainz, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
+	select @EmplId_Chainz, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	;
 
----------------------------------------------------------------------------------------------
---  GuzJr Works as a screener
----------------------------------------------------------------------------------------------
-DECLARE @EmplId_GuzJr int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Guz Jr');
-insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-select @EmplId_GuzJr, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
-select @EmplId_GuzJr, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
-select @EmplId_GuzJr, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
-select @EmplId_GuzJr, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
-;
+	---------------------------------------------------------------------------------------------
+	--  GuzJr Works as a screener
+	---------------------------------------------------------------------------------------------
+	DECLARE @EmplId_GuzJr int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Guz Jr');
+	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmplId_GuzJr, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
+	select @EmplId_GuzJr, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
+	select @EmplId_GuzJr, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
+	select @EmplId_GuzJr, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	;
 
----------------------------------------------------------------------------------------------
---  Prego Works as a screener
----------------------------------------------------------------------------------------------
-DECLARE @EmplId_Prego int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Prego');
-insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-select @EmplId_Prego, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 4, 0 union
-select @EmplId_Prego, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 0 union
-select @EmplId_Prego, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 2, 0 union
-select @EmplId_Prego, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 2, 0 -- union
-;
+	---------------------------------------------------------------------------------------------
+	--  Prego Works as a screener
+	---------------------------------------------------------------------------------------------
+	DECLARE @EmplId_Prego int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Prego');
+	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmplId_Prego, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 4, 0 union
+	select @EmplId_Prego, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 0 union
+	select @EmplId_Prego, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 2, 0 union
+	select @EmplId_Prego, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 2, 0 -- union
+	;
 
----------------------------------------------------------------------------------------------
---  Tawney Works as a screener
----------------------------------------------------------------------------------------------
-DECLARE @EmplId_Tawney int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
-insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-select @EmplId_Tawney, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
-select @EmplId_Tawney, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
-select @EmplId_Tawney, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
-select @EmplId_Tawney, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
-;
+	---------------------------------------------------------------------------------------------
+	--  Tawney Works as a screener
+	---------------------------------------------------------------------------------------------
+	DECLARE @EmplId_Tawney int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
+	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmplId_Tawney, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
+	select @EmplId_Tawney, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
+	select @EmplId_Tawney, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
+	select @EmplId_Tawney, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	;
 
----------------------------------------------------------------------------------------------
---  Tawney Works as a Closer
----------------------------------------------------------------------------------------------
-insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-select @EmplId_Tawney, @RoleId_Closer, '2015-03-27', '2015-03-27 12:45am', '2015-03-27 1:00pm', 0, 1 -- union
-;
+	---------------------------------------------------------------------------------------------
+	--  Tawney Works as a Closer
+	---------------------------------------------------------------------------------------------
+	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmplId_Tawney, @RoleId_Closer, '2015-03-27', '2015-03-27 12:45am', '2015-03-27 1:00pm', 0, 1 -- union
+	;
+END
+GO
 
-
-select * from employee.day
+-- select * from employee.day
 
 ---------------------------------------------------------------------------------------------
 --  Write some policies
 ---------------------------------------------------------------------------------------------
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+
 SET IDENTITY_INSERT [Policy].[Policy] ON;
 
 -- select top 100 * from car.car where year = '2011'
@@ -1267,68 +1344,53 @@ DECLARE @EmplId_Tawny int = (SELECT EmplId from [Employee].[Employee] WHERE Firs
 DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
 --  select @EmplId_Chainz
 
+-- select * from Policy.Policy
 /*
-INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
+INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, PolicyTerm, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
 							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
 
-SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC123' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
+SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC123' as CompanyPolicyNum, 36 as PolicyTerm, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
 		2105 as Retail, 2600 as [Retail++], 500 as Discount, 1605 as TotalCost, 595 as AdminCost, 1010 as GrossProfit,
 		'2015-03-27' as FirstPaymentDt, 0 as Months  -- , 0 as PaymentFrequency
 ;
 */
 
---delete policy.policy where policyId = 2
-
-INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull,
+INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, PolicyTerm, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull,
 							DownPayment, Retail, [Retail++], Discount,
 							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
 
-SELECT	2 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC124' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '19UUA8F20BA000150' as VIN,
+SELECT	2 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC124' as CompanyPolicyNum, 48 as PolicyTerm, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '19UUA8F20BA000150' as VIN,
 		'2015-03-27' as ClosingDt, 2 as SaleCnt, 'N' as PaidInFull, 295 as DownPayment,
 		2300 as Retail, 2800 as [Retail++], 200 as Discount, 2100 as TotalCost, 795 as AdminCost, 1305 as GrossProfit,
 		'2015-03-27' as FirstPaymentDt, 12 as Months  -- , 0 as PaymentFrequency
 ;
-
--- select * from [Pay].[GravyMod_Payment]
-
-
 SET IDENTITY_INSERT [Policy].[Policy] OFF;
 
-select * from Policy.Policy
+END
+GO
 
-
-
-
+-- select * from Policy.Policy
+/*
 select *
 from Legend.Day
 where Payday = 'Y'
 and Dt = '2015-04-17'
+*/
 
 -----------------------------------------------
 --
 -----------------------------------------------
-IF OBJECT_ID(N'up_PayDay') IS NOT NULL
-	DROP PROC UP_PayDay;
+
+--*****************************
+-- Clean Up
+--*****************************
+DROP table [dbo].[Tmp];
 GO
 
-CREATE PROC up_PayDay
-	@Week smallint = 16
-AS
-	DECLARE @PayPeriod_BeginDt smalldatetime;
-	DECLARE @PayPeriod_EndDt smalldatetime;
-
-	select @Week;
-GO
-
-exec up_PayDay;
 
 
+select count(*) from car.car
 
-select 2, '2015-04-13'
-
-
-
-*/
-
-
-
+select Make, Year, count(*)
+from Car.Car
+group by Make, Year
