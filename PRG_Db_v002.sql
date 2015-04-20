@@ -519,12 +519,19 @@ GO
 -----------------------------------------
 CREATE TABLE [DNC].[Wireless_LoadLog]
 (
-	[LoadDt]				[smalldatetime] NOT NULL,
-	[WirelessCnt]			[int]			NOT NULL,
+	[Dt]					[smalldatetime] NOT NULL UNIQUE,
+	[WirelessBlockCnt]		[int]			NOT NULL,
 	[WirelessToLandlineCnt] [int]			NOT NULL,
-	[LandlineToWirelessCnt] [int]			NOT NULL
+	[LandlineToWirelessCnt] [int]			NOT NULL,
+FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt)
 ) ON [PRIMARY]
 GO
+
+INSERT [DNC].[Wireless_LoadLog] (Dt, WirelessBlockCnt, WirelessToLandlineCnt, LandlineToWirelessCnt )
+SELECT LoadDt, WirelessCnt, WirelessToLandlineCnt, LandlineToWirelessCnt
+FROM [PrivateReserve].[DNC].[Wireless_LoadLog];
+GO
+
 
 --***************************************
 --
