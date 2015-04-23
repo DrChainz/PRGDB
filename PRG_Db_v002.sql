@@ -717,9 +717,19 @@ CREATE TABLE [Car].[Car]
 	[Make]			[varchar](20)		NOT NULL,
 	[Model]			[varchar](30)		NOT NULL,
 	[Year]			[Legend].[Year]		NOT NULL,
+	[Phone]			[Legend].[Phone]	NOT NULL,
+	[Wireless]		[Legend].[YesNo]	NOT NULL,
+	[Exclude]		[Legend].[YesNo]	NOT NULL,
+	[FirstName]		[varchar](20)		NULL,
+	[LastName]		[varchar](30)		NULL,
+	[Address]		[varchar](50)		NULL,
+	[City]			[varchar](30)		NULL,
+	[State]			[dbo].[State]		NOT NULL,
+	[Zip]			[varchar](10)		NULL,
 PRIMARY KEY ([VIN]),
 FOREIGN KEY ([Make]) REFERENCES [Car].[Make] ( Make ),
-FOREIGN KEY ([Year]) REFERENCES [Car].[Year] ( Year )
+FOREIGN KEY ([Year]) REFERENCES [Car].[Year] ( Year ),
+FOREIGN KEY ([State]) REFERENCES [Legend].[State] ( State )
 );
 GO
 
@@ -732,25 +742,25 @@ where Make not in (select Make from [Car].[Make])
 group by Make
 */
 
-
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
-	INSERT [Car].[Car] (VIN, Make, Model, Year)
-	select VIN, Make, Model, Year
+	INSERT [Car].[Car] (VIN, Make, Model, Year, Phone, Wireless, Exclude, FirstName, LastName, Address, City, State, Zip)
+	select VIN, Make, Model, Year, Phone, Wireless, Exclude, FirstName, LastName, Address1, City, State, Zip
 	from [QSM].[CarData].[Car]
 	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
-	  and Make in (SELECT [Make] FROM [Car].[Make])
-	  and Year in (SELECT Year FROM [QSM].[CarData].[Year])
+	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
+	  and Year in (SELECT Year FROM [PRG].[Car].[Year])
+	  and State in (SELECT State FROM [PRG].[Legend].[State])
 	  and Exclude = 'N'
 --	  and Make = 'KIA' -- test 
 END
 GO
 
-
 --------------------------------------------------------------------------------------------------------------------
 --  drop table [Car].[CarPhone]
 --------------------------------------------------------------------------------------------------------------------
+/*
 CREATE TABLE [Car].[CarPhone]
 (
 	[VIN]			[Car].[VIN]			NOT NULL,
@@ -765,10 +775,10 @@ CREATE TABLE [Car].[CarPhone]
 FOREIGN KEY ([VIN]) REFERENCES [Car].[Car](VIN),
 FOREIGN KEY ([State]) REFERENCES [Legend].[State](State)
 );
-GO
+-- GO
 
 CREATE UNIQUE INDEX PK_CarPhone ON [Car].[CarPhone] ( VIN, Phone );
-GO
+-- GO
 
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
@@ -781,7 +791,8 @@ BEGIN
 	  and VIN in (select VIN FROM [Car].[Car])
 	  and STate not in (select State from [Car].[StateExclude])
 END
-GO
+-- GO
+*/
 
 --------------------------------------------------------------------------------------------------------------------
 --  This table is only to be used to put data into so that it can be extracted in the correct format to be loaded
