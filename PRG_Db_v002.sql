@@ -12,7 +12,7 @@ USE [PRG];
 GO
 
 create table [dbo].[Tmp] ( LoadData char(1) NOT NULL );
-INSERT [dbo].[Tmp] SELECT 'Y';
+INSERT [dbo].[Tmp] SELECT 'N';
 GO
 
 ---------------------------------------
@@ -58,6 +58,7 @@ CREATE RULE [Legend].[YesNo]
 AS
 @Val IN ('N','Y')
 GO
+
 
 CREATE RULE [Legend].[YesNoUnknown] 
 AS
@@ -453,16 +454,20 @@ FOREIGN KEY ([DispCd]) REFERENCES [Legend].[Disp](DispCd)
 ------------------------------------------
 -- move some data into here to get started
 ------------------------------------------
-INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
-SELECT Phone, DispCd, CallTm
-FROM [PrivateReserve].[DNC].[DNC]
- GO
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
+	SELECT Phone, DispCd, CallTm
+	FROM [PrivateReserve].[DNC].[DNC];
 
-INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
-SELECT DISTINCT Phone, 'DNC', GETDATE()
-FROM [PrivateReserve].[CarData].[DNC_Preexisting]
-WHERE Phone NOT IN (SELECT Phone FROM [DNC].[DNC])
-  AND Phone LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+	-- Unsure why this is here - do some investigation as think depreciated
+	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
+	SELECT DISTINCT Phone, 'DNC', GETDATE()
+	FROM [PrivateReserve].[CarData].[DNC_Preexisting]
+	WHERE Phone NOT IN (SELECT Phone FROM [DNC].[DNC])
+	  AND Phone LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+END
 GO
 
 ---------------------------------------
@@ -531,7 +536,6 @@ INSERT [DNC].[Wireless_LoadLog] (Dt, WirelessBlockCnt, WirelessToLandlineCnt, La
 SELECT LoadDt, WirelessCnt, WirelessToLandlineCnt, LandlineToWirelessCnt
 FROM [PrivateReserve].[DNC].[Wireless_LoadLog];
 GO
-
 
 --***************************************
 --
@@ -733,7 +737,16 @@ FOREIGN KEY ([State]) REFERENCES [Legend].[State] ( State )
 );
 GO
 
+
 /*
+
+select count(*) from [Car].[Car]
+
+select Wireless, count(*)
+from [Car].[Car]
+where Exclude = 'N'
+group by Wireless
+
 select * from car.year
 
 select Make, count(*)
@@ -752,47 +765,13 @@ BEGIN
 	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
 	  and Year in (SELECT Year FROM [PRG].[Car].[Year])
 	  and State in (SELECT State FROM [PRG].[Legend].[State])
-	  and Exclude = 'N'
+-- 	  and Exclude = 'N'
+	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+	  and vin in ('1FMEU75847UB32730','19UUA8F20BA000150')
+
 --	  and Make = 'KIA' -- test 
 END
 GO
-
---------------------------------------------------------------------------------------------------------------------
---  drop table [Car].[CarPhone]
---------------------------------------------------------------------------------------------------------------------
-/*
-CREATE TABLE [Car].[CarPhone]
-(
-	[VIN]			[Car].[VIN]			NOT NULL,
-	[Phone]			[Legend].[Phone]	NOT NULL,
-	[Wireless]		[Legend].[YesNo]	NOT NULL,
-	[FirstName]		[varchar](20)		NULL,
-	[LastName]		[varchar](30)		NULL,
-	[Address]		[varchar](50)		NULL,
-	[City]			[varchar](30)		NULL,
-	[State]			[dbo].[State]		NOT NULL,
-	[Zip]			[varchar](10)		NULL
-FOREIGN KEY ([VIN]) REFERENCES [Car].[Car](VIN),
-FOREIGN KEY ([State]) REFERENCES [Legend].[State](State)
-);
--- GO
-
-CREATE UNIQUE INDEX PK_CarPhone ON [Car].[CarPhone] ( VIN, Phone );
--- GO
-
-DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
-IF (@LoadData = 'Y')
-BEGIN
-	INSERT [Car].[CarPhone] (VIN, Phone, Wireless, FirstName, LastName, Address, City, State, Zip)
-	SELECT VIN, Phone, Wireless, FirstName, LastName, Address, City, State, Zip
-	FROM [QSM].[CarData].[CarPhone]
-	WHERE State in (select State FROM Legend.State)
-	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-	  and VIN in (select VIN FROM [Car].[Car])
-	  and STate not in (select State from [Car].[StateExclude])
-END
--- GO
-*/
 
 --------------------------------------------------------------------------------------------------------------------
 --  This table is only to be used to put data into so that it can be extracted in the correct format to be loaded
@@ -1363,7 +1342,7 @@ DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE Fir
 --  select @EmplId_Chainz
 
 -- select * from Policy.Policy
-/*
+
 INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, PolicyTerm, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
 							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
 
@@ -1371,7 +1350,6 @@ SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC123' as CompanyPolicy
 		2105 as Retail, 2600 as [Retail++], 500 as Discount, 1605 as TotalCost, 595 as AdminCost, 1010 as GrossProfit,
 		'2015-03-27' as FirstPaymentDt, 0 as Months  -- , 0 as PaymentFrequency
 ;
-*/
 
 INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, PolicyTerm, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull,
 							DownPayment, Retail, [Retail++], Discount,
@@ -1395,9 +1373,100 @@ where Payday = 'Y'
 and Dt = '2015-04-17'
 */
 
+--*******************************************************
+-- Acct Schema -- related to all accounting functionality
+--*******************************************************
+CREATE Schema [Acct];
+GO
+
+-- select * from acct.acct
+
+CREATE RULE [Acct].[Type] 
+AS
+@Val IN ('Liability','Asset','Equity')
+GO
+
+-- Just easier than building table to keep track of at the moment as only supporting USD
+CREATE RULE [Acct].[Currency] 
+AS
+@Val IN ('USD')
+GO
+
+CREATE TYPE [Acct].[Type] FROM [varchar](9) NOT NULL
+GO
+
+CREATE TYPE [Acct].[Currency] FROM [char](3) NOT NULL
+GO
+
+---------------------------------------
+-- Bind the rules the types
+---------------------------------------
+sp_bindrule '[Acct].[Type]', '[Acct].[Type]';
+GO
+
+sp_bindrule '[Acct].[Currency]', '[Acct].[Currency]';
+GO
+
+
+-----------------------------------------------------------
+-- DROP TABLE [Acct].[Acct];
+-----------------------------------------------------------
+CREATE TABLE [Acct].[Acct]
+(
+	AcctSNum		int					NOT NULL IDENTITY (-1,1),
+	ParentAcctSNum	int					NULL,
+	Name			varchar(50)			NOT NULL,
+	Type			[Acct].[Type]		NOT NULL,
+PRIMARY KEY ([AcctSNum]),
+FOREIGN KEY ([ParentAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum)
+);
+
+CREATE UNIQUE INDEX PK_Acct_Name ON [Acct].[Acct] (Name);
+
+-- truncate table [Acct].[Acct];
+
+SET IDENTITY_INSERT [Acct].[Acct] ON;
+INSERT [Acct].[Acct] ( AcctSNum, ParentAcctSNum, Name, Type )
+SELECT -1, NULL,	'CASH',				'Asset'		UNION
+SELECT 0, -1,		'P Reserve',		'Asset'		UNION
+SELECT 1, 0,		'P',				'Equity'	UNION
+SELECT 2, 0,		'Tani',				'Equity'	UNION
+SELECT 3, 0,		'Chainz',			'Equity'	UNION
+SELECT 4, 0,		'Marco',			'Equity'	UNION
+SELECT 5, NULL,		'Payables',			'Liability'	UNION
+SELECT 6, NULL,		'Receivables',		'Asset'		UNION
+SELECT 7, NULL,		'TransNational',	'Asset'		UNION
+SELECT 8, NULL,		'OmniSure',			'Asset'		UNION
+SELECT 9, NULL,		'Q Reserve',		'Liability'	UNION
+SELECT 10, 9,		'Dan',				'Liability' UNION
+SELECT 11, NULL,	'VOIP Minutes',		'Liability' UNION
+SELECT 12, NULL,	'Alcazarnet',		'Liability' UNION
+SELECT 13, NULL,	'Interstate',		'Liability' UNION
+SELECT 14, NULL,	'Internet - Cox',	'Liability' -- UNION
+
+SET IDENTITY_INSERT [Acct].[Acct] OFF;
+
+-- select * from Acct.Acct
+
 -----------------------------------------------
 --
 -----------------------------------------------
+CREATE TABLE [Acct].[Transaction]
+(
+	[TransSNum]			[int]				NOT NULL IDENTITY (1,1),
+	[Dt]				[smalldatetime]		NOT NULL,
+	[DebitAcctSNum]		[int]				NOT NULL,
+	[CreditAcctSNum]	[int]				NOT NULL,
+	[Debit]				[money]				NOT NULL,
+	[Credit]			[money]				NOT NULL,
+	[Currency]			[Acct].[Currency]	NOT NULL,
+PRIMARY KEY ([TransSNum]),
+FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([DebitAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum),
+FOREIGN KEY ([CreditAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum)
+);
+
+
 
 --*****************************
 -- Clean Up
@@ -1405,10 +1474,3 @@ and Dt = '2015-04-17'
 DROP table [dbo].[Tmp];
 GO
 
-
-
-select count(*) from car.car
-
-select Make, Year, count(*)
-from Car.Car
-group by Make, Year
