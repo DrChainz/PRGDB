@@ -1381,6 +1381,12 @@ GO
 
 -- select * from acct.acct
 
+CREATE RULE [Acct].[Period]
+AS
+@Val IN '
+GO
+
+
 CREATE RULE [Acct].[Type] 
 AS
 @Val IN ('Liability','Asset','Equity')
@@ -1417,8 +1423,13 @@ CREATE TABLE [Acct].[Acct]
 	ParentAcctSNum	int					NULL,
 	Name			varchar(50)			NOT NULL,
 	Type			[Acct].[Type]		NOT NULL,
+	CreateDt		[smalldatetime]		NOT NULL,
+	IsClosed		[Legend].[YesNo]	NOT NULL,
+	ClosedDt		[smalldatetime]		NULL
 PRIMARY KEY ([AcctSNum]),
-FOREIGN KEY ([ParentAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum)
+FOREIGN KEY ([ParentAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum),
+FOREIGN KEY ([CreateDt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([ClosedDt]) REFERENCES [Legend].[Day] (Dt)
 );
 
 CREATE UNIQUE INDEX PK_Acct_Name ON [Acct].[Acct] (Name);
@@ -1426,23 +1437,30 @@ CREATE UNIQUE INDEX PK_Acct_Name ON [Acct].[Acct] (Name);
 -- truncate table [Acct].[Acct];
 
 SET IDENTITY_INSERT [Acct].[Acct] ON;
-INSERT [Acct].[Acct] ( AcctSNum, ParentAcctSNum, Name, Type )
-SELECT -1, NULL,	'CASH',				'Asset'		UNION
-SELECT 0, -1,		'P Reserve',		'Asset'		UNION
-SELECT 1, 0,		'P',				'Equity'	UNION
-SELECT 2, 0,		'Tani',				'Equity'	UNION
-SELECT 3, 0,		'Chainz',			'Equity'	UNION
-SELECT 4, 0,		'Marco',			'Equity'	UNION
-SELECT 5, NULL,		'Payables',			'Liability'	UNION
-SELECT 6, NULL,		'Receivables',		'Asset'		UNION
-SELECT 7, NULL,		'TransNational',	'Asset'		UNION
-SELECT 8, NULL,		'OmniSure',			'Asset'		UNION
-SELECT 9, NULL,		'Q Reserve',		'Liability'	UNION
-SELECT 10, 9,		'Dan',				'Liability' UNION
-SELECT 11, NULL,	'VOIP Minutes',		'Liability' UNION
-SELECT 12, NULL,	'Alcazarnet',		'Liability' UNION
-SELECT 13, NULL,	'Interstate',		'Liability' UNION
-SELECT 14, NULL,	'Internet - Cox',	'Liability' -- UNION
+
+DECLARE @Day1	smalldatetime	= '2015-03-15';
+DECLARE @Day2	smalldatetime	= '2015-05-1';
+
+
+INSERT [Acct].[Acct] ( AcctSNum, ParentAcctSNum, Name, Type, CreateDt )
+SELECT -1, NULL,	'CASH',				'Asset',	@Day1	UNION
+SELECT 0, -1,		'P Reserve',		'Asset',	@Day1	UNION
+SELECT 1, NULL,		'P',				'Equity',	@Day1	UNION
+SELECT 2, NULL,		'Tani',				'Equity',	@Day1	UNION
+SELECT 3, NULL,		'Chainz',			'Equity',	@Day1	UNION
+SELECT 4, NULL,		'Marco',			'Equity',	@Day1	UNION
+SELECT 5, NULL,		'Employee Expense',	'Liability',@Day1	UNION
+SELECT 7, NULL,		'TransNational',	'Asset',	@Day1	UNION
+SELECT 8, NULL,		'OmniSure',			'Asset',	@Day1	UNION
+SELECT 9, NULL,		'Q Reserve',		'Liability',@Day1	UNION
+SELECT 10, 9,		'Dan',				'Liability',@Day1	UNION
+SELECT 11, NULL,	'VOIP Minutes',		'Liability',@Day1	UNION
+SELECT 12, 11,		'Alcazarnet',		'Liability',@Day1	UNION
+SELECT 13, 11,		'Interstate',		'Liability',@Day1	UNION
+SELECT 14, NULL,	'Internet - Cox',	'Liability',@Day1	UNION
+SELECT 15, 9,		'GuzJr',			'Liability',@Day1	UNION
+SELECT 16, 9,		'Ramos',			'Liability',@Day2 
+
 
 SET IDENTITY_INSERT [Acct].[Acct] OFF;
 
@@ -1465,6 +1483,16 @@ FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([DebitAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum),
 FOREIGN KEY ([CreditAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum)
 );
+
+CREATE TABLE [Acct].[Journal]
+(
+	[JournalSNum]		[int]				NOT NULL IDENTITY (1,1),
+	[Dt]				[smalldatetime]		NOT NULL,
+	[Period]			[Acct].[Period]		NOT NULL
+PRIMARY KEY ([JournalSNum]),
+FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
+)
+
 
 
 
