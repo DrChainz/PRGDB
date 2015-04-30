@@ -418,6 +418,280 @@ GO
 --***************************************
 --
 --***************************************
+CREATE Schema [Employee];
+GO
+
+--------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Employee].[Rate]
+(
+	[RateId]	[int]			NOT NULL	IDENTITY(1,1),
+	[Name]		[varchar](30)	NOT NULL	UNIQUE,
+	[HrPay]		[money]			NOT NULL
+PRIMARY KEY ([RateId])
+) ON [PRIMARY]
+GO
+
+SET IDENTITY_INSERT [Employee].[Rate] ON;
+INSERT [Employee].[Rate] (RateId, Name, HrPay)
+SELECT 1, 'Probation', 10 UNION
+SELECT 2, 'Serf', 11 UNION
+SELECT 3, 'Peasant', 12 UNION
+SELECT 4, 'Knight', 13 UNION
+SELECT 5, 'Manager/Lord/Noble', 14
+SET IDENTITY_INSERT [Employee].[Rate] OFF;
+GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Employee].[Role]
+(
+	[RoleId]			[int]			NOT NULL	IDENTITY(1,1),
+	[Role]				[varchar](30)	NOT NULL	UNIQUE,
+	[DefaultRateId]		[int]			NULL
+PRIMARY KEY ([RoleId])
+FOREIGN KEY ([DefaultRateId]) REFERENCES [Employee].[Rate] (RateId)
+) ON [PRIMARY]
+GO
+
+SET IDENTITY_INSERT [Employee].[Role] ON;
+INSERT [Employee].[Role] (RoleId, Role, DefaultRateId)
+SELECT 1, 'Screener', 1 UNION
+SELECT 2, 'Manager', 5 UNION
+SELECT 3, 'Closer', NULL UNION
+SELECT 4, 'T.O.', NULL
+SET IDENTITY_INSERT [Employee].[Role] OFF;
+GO
+
+---------------------------------------
+-- drop TABLE [Employee].[Employee]
+-----------------------------------------
+CREATE TABLE [Employee].[Employee]
+(
+	[EmplId]			[int]				NOT NULL	IDENTITY(1,1),
+	[RoleId]			[int]				NOT NULL,
+	[RateId]			[int]				NOT NULL,
+	[HireDt]			[smalldatetime]		NOT NULL,
+	[FirstName]			[varchar](20)		NOT NULL,
+	[LastName]			[varchar](30)		NULL,
+	[Phone]				[Legend].[Phone]	NULL,
+	[Address]			[varchar](50)		NULL,
+	[Address2]			[varchar](50)		NULL,
+	[City]				[varchar](30)		NULL,
+	[State]				[State]				NULL,
+	[Zip]				[varchar](10)		NULL,
+PRIMARY KEY ([EmplId]),
+FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId),
+FOREIGN KEY ([RateId]) REFERENCES [Employee].[Rate] (RateId),
+FOREIGN KEY ([HireDt]) REFERENCES [Legend].[Day] (Dt)
+);
+GO
+
+SET IDENTITY_INSERT [Employee].[Employee] ON;
+INSERT [Employee].[Employee] (EmplId, RoleId, RateId, FirstName, HireDt)
+select 1, 3, 5, 'Tawney', '2015-04-01' union
+select 2, 1, 1, 'Guz Jr', '2015-04-01' union
+SELECT 3, 2, 5, 'Chainz', '2015-04-01' union
+select 4, 1, 2, 'Prego', '2015-04-01'
+SET IDENTITY_INSERT [Employee].[Employee] OFF;
+
+/*
+select e.FirstName, o.Role, r.Name
+from [Employee].[Employee] e, [Employee].[Role] o, [Employee].[Rate] r
+where e.RateId = r.RateId
+  and e.RoleId = o.RoleId
+*/
+
+---------------------------------------
+-- drop table [Employee].[Day]
+-----------------------------------------
+CREATE TABLE [Employee].[Day]
+(
+	[EmplId]			[int]				NOT NULL,
+	[RoleId]			[int]				NOT NULL,
+	[Dt]				[smalldatetime]		NOT NULL,
+	[StartTm]			[smalldatetime]		NOT NULL,
+	[EndTm]				[smalldatetime]		NULL,
+	[TransferCnt]		[smallint]			NULL,
+	[CloseCnt]			[smallint]			NULL
+FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
+);
+GO
+
+--------------------------------------------------------------------------------
+-- An employee can be/play/work as one or more roles in a day
+--------------------------------------------------------------------------------
+CREATE UNIQUE INDEX PK_EmployeeDay ON [Employee].[Day] ([EmplId], [RoleId], [Dt])
+GO
+
+
+
+--*******************************************************
+-- Acct Schema -- related to all accounting functionality
+--*******************************************************
+CREATE Schema [Acct];
+GO
+
+-- select * from acct.acct
+
+CREATE RULE [Acct].[Qtr]
+AS
+@Val like '[1-2][0-9][0-9][0-9]Q[1-4]'
+GO
+
+
+CREATE RULE [Acct].[Type] 
+AS
+@Val IN ('Liability','Asset','Equity')
+GO
+
+-- Just easier than building table to keep track of at the moment as only supporting USD
+/*
+CREATE RULE [Acct].[Currency] 
+AS
+@Val IN ('USD')
+GO
+*/
+
+
+CREATE TYPE [Acct].[Type] FROM [varchar](9) NOT NULL
+GO
+
+CREATE TYPE [Acct].[Currency] FROM [char](3) NOT NULL
+GO
+
+CREATE TYPE [Acct].[Qtr] FROM [char](6) NOT NULL
+GO
+
+
+---------------------------------------
+-- Bind the rules the types
+---------------------------------------
+sp_bindrule '[Acct].[Type]', '[Acct].[Type]';
+GO
+
+-- sp_bindrule '[Acct].[Currency]', '[Acct].[Currency]';
+-- GO
+
+sp_bindrule '[Acct].[Qtr]', '[Acct].[Qtr]';
+GO
+
+-----------------------------------------------------------
+-- DROP TABLE [Acct].[Acct];
+-----------------------------------------------------------
+CREATE TABLE [Acct].[Currency]
+(
+	Currency		[Acct].[Currency]			NOT NULL,
+PRIMARY KEY ([Currency])
+);
+
+INSERT [Acct].[Currency] (Currency)
+SELECT 'USD';
+GO
+
+-----------------------------------------------------------
+-- DROP TABLE [Acct].[Acct];
+-----------------------------------------------------------
+CREATE TABLE [Acct].[Acct]
+(
+	AcctId			[int]				NOT NULL IDENTITY (-1,1),
+	ParentAcctId	[int]				NULL,
+	Name			varchar(50)			NOT NULL,
+	Shares			[int]				NULL,
+	Type			[Acct].[Type]		NOT NULL,
+	CreateDt		[smalldatetime]		NOT NULL,
+	IsClosed		[Legend].[YesNo]	NOT NULL,
+	ClosedDt		[smalldatetime]		NULL
+PRIMARY KEY ([AcctId]),
+FOREIGN KEY ([ParentAcctId]) REFERENCES [Acct].[Acct] (AcctId),
+FOREIGN KEY ([CreateDt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([ClosedDt]) REFERENCES [Legend].[Day] (Dt)
+);
+
+CREATE UNIQUE INDEX PK_Acct_Name ON [Acct].[Acct] (Name);
+
+-- truncate table [Acct].[Acct];
+
+SET IDENTITY_INSERT [Acct].[Acct] ON;
+
+DECLARE @Day0	smalldatetime	= '2015-02-17';
+DECLARE @Day1	smalldatetime	= '2015-03-15';
+DECLARE @Day2	smalldatetime	= '2015-05-1';
+
+INSERT [Acct].[Acct] ( AcctId, ParentAcctId, Name, Type, CreateDt, Shares )
+SELECT -1, NULL,	'Cash',					'Asset',	@Day1,	NULL UNION
+SELECT 0, -1,		'P Reserve',			'Asset',	@Day1,	NULL UNION
+SELECT 1, NULL,		'P',					'Equity',	@Day1,	700000 UNION
+SELECT 2, NULL,		'Tani',					'Equity',	@Day1,	100000 UNION
+SELECT 3, NULL,		'Chainz',				'Equity',	@Day1,	100000 UNION
+SELECT 4, NULL,		'Marco',				'Equity',	@Day1,	100000 UNION
+SELECT 5, NULL,		'Employee Expense',		'Liability',@Day1,	NULL UNION
+SELECT 7, NULL,		'TransNational',		'Asset',	@Day1,	NULL UNION
+SELECT 8, NULL,		'OmniSure',				'Asset',	@Day1,	NULL UNION
+SELECT 9, NULL,		'Q Reserve',			'Liability',@Day1,	NULL UNION
+SELECT 10, 9,		'Dan',					'Liability',@Day1,	NULL UNION
+SELECT 11, NULL,	'VOIP Minutes',			'Liability',@Day1,	NULL UNION
+SELECT 12, 11,		'Alcazarnet',			'Liability',@Day1,	NULL UNION
+SELECT 13, 11,		'Interstate',			'Liability',@Day1,	NULL UNION
+SELECT 14, NULL,	'Internet - Cox',		'Liability',@Day1,	NULL UNION
+SELECT 15, 9,		'GuzJr',				'Liability',@Day1,	NULL UNION
+SELECT 16, 9,		'Ramos',				'Liability',@Day2,	NULL UNION 
+SELECT 17, 0,		'Admins',				'Asset',	@Day1,	NULL UNION
+SELECT 18, 17,		'American Auto Shield',	'Asset',	@Day1,	NULL UNION
+SELECT 19, 17,		'Royal',				'Asset',	@Day1,	NULL UNION
+SELECT 20, 17,		'Sentinel',				'Asset',	@Day1,	NULL UNION
+SELECT 21, 17,		'Sun Path',				'Asset',	@Day1,	NULL
+
+SET IDENTITY_INSERT [Acct].[Acct] OFF;
+
+-- select * from Acct.Acct
+
+-----------------------------------------------
+--  employee is the one who closes the period by creating the journal entry.
+-----------------------------------------------
+CREATE TABLE [Acct].[Journal]
+(
+	[JournalId]			[int]				NOT NULL IDENTITY (1,1),
+	[ParentJournalId]	[int]				NULL,
+	[Dt]				[smalldatetime]		NOT NULL,
+	[EmplId]			[int]				NOT NULL,
+	[Qtr]				[Acct].[Qtr]		NOT NULL,
+	[Week]				[smallint]			NOT NULL,					-- represents the week range 
+PRIMARY KEY ([JournalId]),
+FOREIGN KEY ([ParentJournalId]) REFERENCES [Acct].[Journal] ( JournalId ),
+FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] ( Dt ),
+FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] ( EmplId )
+);
+
+-----------------------------------------------
+--
+-----------------------------------------------
+CREATE TABLE [Acct].[Transaction]
+(
+	[TransId]			[int]				NOT NULL IDENTITY (1,1),
+	[Dt]				[smalldatetime]		NOT NULL,
+	[DebitAcctId]		[int]				NOT NULL,
+	[CreditAcctId]		[int]				NOT NULL,
+	[Debit]				[money]				NOT NULL,
+	[Credit]			[money]				NOT NULL,
+	[Currency]			[Acct].[Currency]	NOT NULL,
+	[JournalId]			[int]				NULL,			-- when assigned to a journal entry
+PRIMARY KEY ([TransId]),
+FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([DebitAcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
+FOREIGN KEY ([CreditAcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
+FOREIGN KEY ([Currency]) REFERENCES [Acct].[Currency] ( Currency ),
+FOREIGN KEY ([JournalId]) REFERENCES [Acct].[Journal] ( JournalId )
+);
+GO
+
+--***************************************
+--
+--***************************************
 CREATE Schema [DNC];
 GO
 
@@ -798,118 +1072,6 @@ FOREIGN KEY ([State]) REFERENCES [Legend].[State](State)
 ) ON [PRIMARY]
 GO
 
---***************************************
---
---***************************************
-CREATE Schema [Employee];
-GO
-
---------------------------------------
---
------------------------------------------
-CREATE TABLE [Employee].[Rate]
-(
-	[RateId]	[int]			NOT NULL	IDENTITY(1,1),
-	[Name]		[varchar](30)	NOT NULL	UNIQUE,
-	[HrPay]		[money]			NOT NULL
-PRIMARY KEY ([RateId])
-) ON [PRIMARY]
-GO
-
-SET IDENTITY_INSERT [Employee].[Rate] ON;
-INSERT [Employee].[Rate] (RateId, Name, HrPay)
-SELECT 1, 'Probation', 10 UNION
-SELECT 2, 'Serf', 11 UNION
-SELECT 3, 'Peasant', 12 UNION
-SELECT 4, 'Knight', 13 UNION
-SELECT 5, 'Manager/Lord/Noble', 14
-SET IDENTITY_INSERT [Employee].[Rate] OFF;
-GO
-
----------------------------------------
---
------------------------------------------
-CREATE TABLE [Employee].[Role]
-(
-	[RoleId]			[int]			NOT NULL	IDENTITY(1,1),
-	[Role]				[varchar](30)	NOT NULL	UNIQUE,
-	[DefaultRateId]		[int]			NULL
-PRIMARY KEY ([RoleId])
-FOREIGN KEY ([DefaultRateId]) REFERENCES [Employee].[Rate] (RateId)
-) ON [PRIMARY]
-GO
-
-SET IDENTITY_INSERT [Employee].[Role] ON;
-INSERT [Employee].[Role] (RoleId, Role, DefaultRateId)
-SELECT 1, 'Screener', 1 UNION
-SELECT 2, 'Manager', 5 UNION
-SELECT 3, 'Closer', NULL UNION
-SELECT 4, 'T.O.', NULL
-SET IDENTITY_INSERT [Employee].[Role] OFF;
-GO
-
----------------------------------------
--- drop TABLE [Employee].[Employee]
------------------------------------------
-CREATE TABLE [Employee].[Employee]
-(
-	[EmplId]			[int]				NOT NULL	IDENTITY(1,1),
-	[RoleId]			[int]				NOT NULL,
-	[RateId]			[int]				NOT NULL,
-	[HireDt]			[smalldatetime]		NOT NULL,
-	[FirstName]			[varchar](20)		NOT NULL,
-	[LastName]			[varchar](30)		NULL,
-	[Phone]				[Legend].[Phone]	NULL,
-	[Address]			[varchar](50)		NULL,
-	[Address2]			[varchar](50)		NULL,
-	[City]				[varchar](30)		NULL,
-	[State]				[State]				NULL,
-	[Zip]				[varchar](10)		NULL,
-PRIMARY KEY ([EmplId]),
-FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId),
-FOREIGN KEY ([RateId]) REFERENCES [Employee].[Rate] (RateId),
-FOREIGN KEY ([HireDt]) REFERENCES [Legend].[Day] (Dt)
-);
-GO
-
-SET IDENTITY_INSERT [Employee].[Employee] ON;
-INSERT [Employee].[Employee] (EmplId, RoleId, RateId, FirstName, HireDt)
-select 1, 3, 5, 'Tawney', '2015-04-01' union
-select 2, 1, 1, 'Guz Jr', '2015-04-01' union
-SELECT 3, 2, 5, 'Chainz', '2015-04-01' union
-select 4, 1, 2, 'Prego', '2015-04-01'
-SET IDENTITY_INSERT [Employee].[Employee] OFF;
-
-/*
-select e.FirstName, o.Role, r.Name
-from [Employee].[Employee] e, [Employee].[Role] o, [Employee].[Rate] r
-where e.RateId = r.RateId
-  and e.RoleId = o.RoleId
-*/
-
----------------------------------------
--- drop table [Employee].[Day]
------------------------------------------
-CREATE TABLE [Employee].[Day]
-(
-	[EmplId]			[int]				NOT NULL,
-	[RoleId]			[int]				NOT NULL,
-	[Dt]				[smalldatetime]		NOT NULL,
-	[StartTm]			[smalldatetime]		NOT NULL,
-	[EndTm]				[smalldatetime]		NULL,
-	[TransferCnt]		[smallint]			NULL,
-	[CloseCnt]			[smallint]			NULL
-FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] (EmplId),
-FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
-);
-GO
-
---------------------------------------------------------------------------------
--- An employee can be/play/work as one or more roles in a day
---------------------------------------------------------------------------------
-CREATE UNIQUE INDEX PK_EmployeeDay ON [Employee].[Day] ([EmplId], [RoleId], [Dt])
-GO
 
 --***************************************
 --
@@ -934,38 +1096,59 @@ GO
 --***************************************
 --
 --***************************************
-CREATE Schema [Policy];
+CREATE Schema [Contract];
 GO
 
 ---------------------------------------
---
+--  at least three differenct types of companies involved: Administrators, Finnance and Merchant
 -----------------------------------------
-CREATE TABLE [Policy].[Company]
+CREATE TABLE [Contract].[Admin]
 (
-	[CompanyId]			[int]				NOT NULL	IDENTITY(1,1),
-	[Company]			[varchar](30)		NOT NULL	UNIQUE,
-PRIMARY KEY ([CompanyId])
+	[AdminId]			[int]				NOT NULL	IDENTITY(1,1),
+	[Name]				[varchar](30)		NOT NULL	UNIQUE,
+	[AcctId]			[int]				NOT NULL
+PRIMARY KEY ([AdminId]),
+FOREIGN KEY ([AcctId]) REFERENCES [Acct].[Acct] ( AcctId )
 );
 GO
 
-INSERT [Policy].[Company] ( Company )
-SELECT 'American Auto Shield' UNION
-SELECT 'Royal' UNION
-SELECT 'Sentinel'  UNION
-SELECT 'SunPath'
+INSERT [Contract].[Admin] ( Name, AcctId )
+SELECT 'American Auto Shield', 18 UNION
+SELECT 'Royal', 19 UNION
+SELECT 'Sentinel', 20  UNION
+SELECT 'SunPath', 21
+;
 GO
 
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Policy].[Term]
+CREATE TABLE [Contract].[Finance]
 (
-	Months				[smallint]			NOT NULL,
+	[FinanceId]			[int]				NOT NULL	IDENTITY(1,1),
+	[Name]				[varchar](30)		NOT NULL	UNIQUE,
+	[AcctId]			[int]				NOT NULL,
+PRIMARY KEY ([FinanceId]),
+FOREIGN KEY ([AcctId]) REFERENCES [Acct].[Acct] ( AcctId )
+);
+GO
+
+SET IDENTITY_INSERT [Contract].[Finance] ON;
+INSERT [Contract].[Finance] (FinanceId, Name, AcctId)
+SELECT 1, 'OmniSure', 8;
+SET IDENTITY_INSERT [Contract].[Finance] OFF;
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Contract].[Term]
+(
+	[Months]		[smallint]			NOT NULL,
 PRIMARY KEY (Months)
 );
 GO
 
-INSERT [Policy].[Term] (Months)
+INSERT [Contract].[Term] (Months)
 SELECT 0 UNION
 SELECT 6 UNION
 SELECT 9 UNION
@@ -976,9 +1159,31 @@ SELECT 24;
 GO
 
 ---------------------------------------
--- drop table [Policy].[PayPlan]
+--
 -----------------------------------------
-CREATE TABLE [Policy].[PayPlan]
+CREATE TABLE [Contract].[FinanceTerm]
+(
+	[FinanceId]		[int]			NOT NULL,
+	[Months]		[smallint]		NOT NULL,
+	[AdvanceRate]	[numeric](3,2)	NOT NULL,
+FOREIGN KEY ([FinanceId]) REFERENCES [Contract].[Finance] (FinanceId),
+FOREIGN KEY ([Months]) REFERENCES [Contract].[Term] (Months)
+);
+
+CREATE UNIQUE INDEX PK_Contract_FinanceTerm ON [Contract].[FinanceTerm] (FinanceId, Months);
+
+INSERT [Contract].[FinanceTerm] (FinanceId, Months, AdvanceRate)
+SELECT 1, 6, .75 UNION
+SELECT 1, 9, .75 UNION
+SELECT 1, 12, .75 UNION
+SELECT 1, 15, .70 UNION
+SELECT 1, 18, .65 UNION
+SELECT 1, 24, .60;
+
+---------------------------------------
+-- drop table [Contract].[PayPlan]
+-----------------------------------------
+CREATE TABLE [Contract].[PayPlan]
 (
 	[PayPlanId]		[int]			NOT NULL	IDENTITY(1,1),
 	[Name]			varchar(30)		NOT NULL	UNIQUE,
@@ -989,68 +1194,67 @@ FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
 GO
 
 DECLARE @RoleId_Closer int = (SELECT RoleId FROM [Employee].[Role] WHERE Role = 'Closer');
-SET IDENTITY_INSERT [Policy].[PayPlan] ON;
-INSERT [Policy].[PayPlan] (PayPlanId, Name, RoleId)
+SET IDENTITY_INSERT [Contract].[PayPlan] ON;
+INSERT [Contract].[PayPlan] (PayPlanId, Name, RoleId)
 SELECT 1, 'Bizkit', @RoleId_Closer ;
-SET IDENTITY_INSERT [Policy].[PayPlan] OFF;
+SET IDENTITY_INSERT [Contract].[PayPlan] OFF;
 GO
 
 ---------------------------------------
--- drop table [Policy].[Payment]
--- drop table [Policy].[Policy]
+--
 -----------------------------------------
-CREATE TABLE [Policy].[Policy]
+CREATE TABLE [Car].[Contract]
 (
-	[PolicyId]			[int]				NOT NULL	IDENTITY(1,1),
-	[CompanyId]			[int]				NOT NULL,
-	[CompanyPolicyNum]	[varchar](20)		NULL,
-	[PolicyTerm]		[smallint]			NULL,
-	[Front_EmplId]		[int]				NOT NULL,
-	[Sale_EmplId]		[int]				NOT NULL,
-	[TO_EmplId]			[int]				NULL,
-	[PayPlanId]			[int]				NOT NULL,
-	[Vin]				[Car].[Vin]			NOT NULL,	-- think that we can never write duplicate policies on a single car ???
-	[ClosingDt]			[smalldatetime]		NOT NULL,
-	[SaleCnt]			[tinyint]			NOT NULL,
-	[PaidInFull]		[Legend].[YesNo]	NOT NULL,
-	[DownPayment]		[money]				NULL,
-	[Retail++]			[money]				NOT NULL,
-	[Retail]			[money]				NOT NULL,
-	[Discount]			[money]				NOT NULL,
-	[TotalCost]			[money]				NOT NULL,		-- outta be Retail - Discount unless is 0 and total is greater than Retail and more towards Retail++
-	[AdminCost]			[money]				NOT NULL,
-	[GrossProfit]		[money]				NOT NULL,
-	[FirstPaymentDt]	[smalldatetime]		NULL,
-	[Months]			[smallint]			NOT NULL,
-	[IsCancelled]		[Legend].[YesNo]	NOT NULL,
-	[CancelDt]			[smalldatetime]		NULL,
-	[CancelReturnAmt]	[money]				NULL,
--- 	[PaymentFrequency]	[int]				NULL,		-- likely the same as the months - need to do some investigation
-PRIMARY KEY ([PolicyId]),
-FOREIGN KEY ([CompanyId]) REFERENCES [Policy].[Company] (CompanyId),
+	[ContractId]			[int]				NOT NULL	IDENTITY(1,1),
+	[AdminId]				[int]				NOT NULL,
+	[AdminContractNum]		[varchar](20)		NULL,
+-- 	[MonthsPolicyTerm]			[smallint]			NULL,
+	[Front_EmplId]			[int]				NOT NULL,
+	[Sale_EmplId]			[int]				NOT NULL,
+	[TO_EmplId]				[int]				NULL,
+	[PayPlanId]				[int]				NOT NULL,
+	[Vin]					[Car].[Vin]			NOT NULL,	-- think that we can never write duplicate policies on a single car ???
+	[ClosingDt]				[smalldatetime]		NOT NULL,
+	[SaleCnt]				[tinyint]			NOT NULL,
+	[PaidInFull]			[Legend].[YesNo]	NOT NULL,
+	[DownPayment]			[money]				NULL,
+	[Retail++]				[money]				NOT NULL,
+	[Retail]				[money]				NOT NULL,
+	[Discount]				[money]				NOT NULL,
+	[TotalCost]				[money]				NOT NULL,		-- outta be Retail - Discount unless is 0 and total is greater than Retail and more towards Retail++
+	[AdminCost]				[money]				NOT NULL,
+	[GrossProfit]			[money]				NOT NULL,
+	[FirstPaymentDt]		[smalldatetime]		NULL,
+	[Months]				[smallint]			NOT NULL,
+	[IsCancelled]			[Legend].[YesNo]	NOT NULL,
+	[CancelDt]				[smalldatetime]		NULL,
+	[CancelReturnAmt]		[money]				NULL,
+-- 	[PaymentFrequency]		[int]				NULL,		-- likely the same as the months - need to do some investigation
+PRIMARY KEY ([ContractId]),
+FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId),
 FOREIGN KEY ([Front_EmplId]) REFERENCES [Employee].[Employee] (EmplId),
 FOREIGN KEY ([Sale_EmplId]) REFERENCES [Employee].[Employee] (EmplId),
-FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId),
+FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
 FOREIGN KEY ([Vin]) REFERENCES [Car].[Car] (Vin),
 FOREIGN KEY ([ClosingDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([CancelDt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([Months]) REFERENCES [Policy].[Term] (Months)
+FOREIGN KEY ([Months]) REFERENCES [Contract].[Term] (Months)
 );
 GO
 
-CREATE UNIQUE INDEX UK_Policy_EmplId_ClosingDt_SaleCnt ON [Policy].[Policy] ([Sale_EmplId], [ClosingDt], [SaleCnt] );
+CREATE UNIQUE INDEX UK_Contract_EmplId_ClosingDt_SaleCnt ON [Car].[Contract] ([Sale_EmplId], [ClosingDt], [SaleCnt] );
 GO
 
 ---------------------------------------
--- drop table [Policy].[Payment]
+-- drop table [Contract].[Payment]
 -----------------------------------------
-CREATE TABLE [Policy].[Payment]
+CREATE TABLE [Contract].[Payment]
 (
 	[PaymentId]			[int]				NOT NULL	IDENTITY(1,1),
-	[PolicyId]			[int]				NOT NULL,
+	[ContractId]		[int]				NOT NULL,
 	[PaymentDt]			[smalldatetime]		NOT NULL,
 	[Payment]			[money]				NOT NULL,
-FOREIGN KEY ([PolicyId]) REFERENCES [Policy].[Policy] (PolicyId),
+FOREIGN KEY ([ContractId]) REFERENCES [Car].[Contract] (ContractId),
 FOREIGN KEY ([PaymentDt]) REFERENCES [Legend].[Day] (Dt),
 
 );
@@ -1061,7 +1265,6 @@ GO
 select top 100 * from car.car
 select Make, count(*) from car.car group by Make
 -------------------------------------------------------------------------------------------------------- */
--- select top 100 * from [Policy].[Policy]
 
 --******************************************
 -- Pay Schema
@@ -1078,7 +1281,7 @@ CREATE TABLE [Pay].[Sale]
 	[Cnt]			[tinyint]		NOT NULL,
 	[Multiplier]	[money]			NOT NULL,
 	[Gravy]			[money]			NOT NULL
-FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] ( PayPlanId )
+FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] ( PayPlanId )
 )
 GO
 
@@ -1102,7 +1305,7 @@ CREATE TABLE [Pay].[SalePIF]
 	[PayPlanId]		[int]			NOT NULL,
 	[Discount]		[money]			NOT NULL,
 	[Bonus]			[money]			NOT NULL,
-FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] ( PayPlanId )
+FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] ( PayPlanId )
 );
 GO
 
@@ -1130,7 +1333,7 @@ CREATE TABLE [Pay].[GravyMod_DownPayment]
 	[PayPlanId]		[int]		NOT NULL,
 	[DownPayment]	[money]		NOT NULL,
 	[Subtract]		[money]		NOT NULL
-FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId)
+FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId)
 )
 GO
 
@@ -1149,9 +1352,6 @@ select 1, 295, 70 union
 select 1, 195, 80;
 go
 
--- ALTER TABLE [Policy].[Policy] ADD CONSTRAINT fk_Policy_DownPayment FOREIGN KEY (DownPayment) REFERENCES [Pay].[GravyMod_DownPayment](DownPayment);
-
-
 ---------------------------------------
 --  This is the amonth that is discounted from the retail price
 -----------------------------------------
@@ -1160,7 +1360,7 @@ CREATE TABLE [Pay].[GravyMod_Retail]
 	[PayPlanId]			[int]		NOT NULL,
 	[Discount]			[money]		NOT NULL,
 	[Subtract]			[money]		NOT NULL
-FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId)
+FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId)
 );
 GO
 
@@ -1189,8 +1389,8 @@ CREATE TABLE [Pay].[GravyMod_Term]
 	[PayPlanId]			[int]		NOT NULL,
 	[Months]			[smallint]	NOT NULL,
 	[Subtract]			[money]		NOT NULL
-FOREIGN KEY ([PayPlanId]) REFERENCES [Policy].[PayPlan] (PayPlanId),
-FOREIGN KEY ([Months]) REFERENCES [Policy].[Term] (Months)
+FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
+FOREIGN KEY ([Months]) REFERENCES [Contract].[Term] (Months)
 );
 GO
 
@@ -1331,31 +1531,31 @@ DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
 
-SET IDENTITY_INSERT [Policy].[Policy] ON;
+SET IDENTITY_INSERT [Car].[Contract] ON;
 
 -- select top 100 * from car.car where year = '2011'
 
-DECLARE @CompanyId_Sunpath int = (SELECT CompanyId FROM [Policy].[Company] WHERE Company = 'SunPath');
-DECLARE @PayPlanId int = (SELECT PayPlanId from [Policy].[PayPlan] WHERE Name = 'Bizkit');
+DECLARE @CompanyId_Sunpath int = (SELECT CompanyId FROM [Contract].[Company] WHERE Company = 'SunPath');
+DECLARE @PayPlanId int = (SELECT PayPlanId from [Contract].[PayPlan] WHERE Name = 'Bizkit');
 DECLARE @EmplId_Tawny int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
 DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
 --  select @EmplId_Chainz
 
 -- select * from Policy.Policy
 
-INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, PolicyTerm, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
+INSERT [Car].[Contract] (	ContractId, AdminId, AdminContractNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
 							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
 
-SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC123' as CompanyPolicyNum, 36 as PolicyTerm, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
+SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC123' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
 		2105 as Retail, 2600 as [Retail++], 500 as Discount, 1605 as TotalCost, 595 as AdminCost, 1010 as GrossProfit,
 		'2015-03-27' as FirstPaymentDt, 0 as Months  -- , 0 as PaymentFrequency
 ;
 
-INSERT [Policy].[Policy] (	PolicyId, CompanyId, CompanyPolicyNum, PolicyTerm, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull,
+INSERT [Car].[Contract] (	ContractId, AdminId, AdminContractNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull,
 							DownPayment, Retail, [Retail++], Discount,
 							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
 
-SELECT	2 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC124' as CompanyPolicyNum, 48 as PolicyTerm, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '19UUA8F20BA000150' as VIN,
+SELECT	2 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC124' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '19UUA8F20BA000150' as VIN,
 		'2015-03-27' as ClosingDt, 2 as SaleCnt, 'N' as PaidInFull, 295 as DownPayment,
 		2300 as Retail, 2800 as [Retail++], 200 as Discount, 2100 as TotalCost, 795 as AdminCost, 1305 as GrossProfit,
 		'2015-03-27' as FirstPaymentDt, 12 as Months  -- , 0 as PaymentFrequency
@@ -1373,127 +1573,6 @@ where Payday = 'Y'
 and Dt = '2015-04-17'
 */
 
---*******************************************************
--- Acct Schema -- related to all accounting functionality
---*******************************************************
-CREATE Schema [Acct];
-GO
-
--- select * from acct.acct
-
-CREATE RULE [Acct].[Period]
-AS
-@Val IN '
-GO
-
-
-CREATE RULE [Acct].[Type] 
-AS
-@Val IN ('Liability','Asset','Equity')
-GO
-
--- Just easier than building table to keep track of at the moment as only supporting USD
-CREATE RULE [Acct].[Currency] 
-AS
-@Val IN ('USD')
-GO
-
-CREATE TYPE [Acct].[Type] FROM [varchar](9) NOT NULL
-GO
-
-CREATE TYPE [Acct].[Currency] FROM [char](3) NOT NULL
-GO
-
----------------------------------------
--- Bind the rules the types
----------------------------------------
-sp_bindrule '[Acct].[Type]', '[Acct].[Type]';
-GO
-
-sp_bindrule '[Acct].[Currency]', '[Acct].[Currency]';
-GO
-
-
------------------------------------------------------------
--- DROP TABLE [Acct].[Acct];
------------------------------------------------------------
-CREATE TABLE [Acct].[Acct]
-(
-	AcctSNum		int					NOT NULL IDENTITY (-1,1),
-	ParentAcctSNum	int					NULL,
-	Name			varchar(50)			NOT NULL,
-	Type			[Acct].[Type]		NOT NULL,
-	CreateDt		[smalldatetime]		NOT NULL,
-	IsClosed		[Legend].[YesNo]	NOT NULL,
-	ClosedDt		[smalldatetime]		NULL
-PRIMARY KEY ([AcctSNum]),
-FOREIGN KEY ([ParentAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum),
-FOREIGN KEY ([CreateDt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([ClosedDt]) REFERENCES [Legend].[Day] (Dt)
-);
-
-CREATE UNIQUE INDEX PK_Acct_Name ON [Acct].[Acct] (Name);
-
--- truncate table [Acct].[Acct];
-
-SET IDENTITY_INSERT [Acct].[Acct] ON;
-
-DECLARE @Day1	smalldatetime	= '2015-03-15';
-DECLARE @Day2	smalldatetime	= '2015-05-1';
-
-
-INSERT [Acct].[Acct] ( AcctSNum, ParentAcctSNum, Name, Type, CreateDt )
-SELECT -1, NULL,	'CASH',				'Asset',	@Day1	UNION
-SELECT 0, -1,		'P Reserve',		'Asset',	@Day1	UNION
-SELECT 1, NULL,		'P',				'Equity',	@Day1	UNION
-SELECT 2, NULL,		'Tani',				'Equity',	@Day1	UNION
-SELECT 3, NULL,		'Chainz',			'Equity',	@Day1	UNION
-SELECT 4, NULL,		'Marco',			'Equity',	@Day1	UNION
-SELECT 5, NULL,		'Employee Expense',	'Liability',@Day1	UNION
-SELECT 7, NULL,		'TransNational',	'Asset',	@Day1	UNION
-SELECT 8, NULL,		'OmniSure',			'Asset',	@Day1	UNION
-SELECT 9, NULL,		'Q Reserve',		'Liability',@Day1	UNION
-SELECT 10, 9,		'Dan',				'Liability',@Day1	UNION
-SELECT 11, NULL,	'VOIP Minutes',		'Liability',@Day1	UNION
-SELECT 12, 11,		'Alcazarnet',		'Liability',@Day1	UNION
-SELECT 13, 11,		'Interstate',		'Liability',@Day1	UNION
-SELECT 14, NULL,	'Internet - Cox',	'Liability',@Day1	UNION
-SELECT 15, 9,		'GuzJr',			'Liability',@Day1	UNION
-SELECT 16, 9,		'Ramos',			'Liability',@Day2 
-
-
-SET IDENTITY_INSERT [Acct].[Acct] OFF;
-
--- select * from Acct.Acct
-
------------------------------------------------
---
------------------------------------------------
-CREATE TABLE [Acct].[Transaction]
-(
-	[TransSNum]			[int]				NOT NULL IDENTITY (1,1),
-	[Dt]				[smalldatetime]		NOT NULL,
-	[DebitAcctSNum]		[int]				NOT NULL,
-	[CreditAcctSNum]	[int]				NOT NULL,
-	[Debit]				[money]				NOT NULL,
-	[Credit]			[money]				NOT NULL,
-	[Currency]			[Acct].[Currency]	NOT NULL,
-PRIMARY KEY ([TransSNum]),
-FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([DebitAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum),
-FOREIGN KEY ([CreditAcctSNum]) REFERENCES [Acct].[Acct] (AcctSNum)
-);
-
-CREATE TABLE [Acct].[Journal]
-(
-	[JournalSNum]		[int]				NOT NULL IDENTITY (1,1),
-	[Dt]				[smalldatetime]		NOT NULL,
-	[Period]			[Acct].[Period]		NOT NULL
-PRIMARY KEY ([JournalSNum]),
-FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
-)
-
-
 
 
 --*****************************
@@ -1501,4 +1580,12 @@ FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
 --*****************************
 DROP table [dbo].[Tmp];
 GO
+
+
+--------------------------------------------------------------------------------------
+-- Test what we are playing with here
+--------------------------------------------------------------------------------------
+-- select * from Acct.Acct
+-- select * from Contract.FinanceTerm
+
 
