@@ -45,7 +45,7 @@ FROM [PrivateReserve].[CarData].[GoForte_Extract] x, [QSM].[CarData].[CarData_20
 -- FROM [PrivateReserve].[CarData].[GoForte_Extract] x, [QSM].[CarData].[Car] c
 where x.appnumber = c.phone_number
 ;
-
+select count(*) from [PrivateReserve].[CarData].[GoForte_Extract]
 
 /*
 update [PrivateReserve].[CarData].[GoForte_Extract]

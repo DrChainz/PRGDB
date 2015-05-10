@@ -1,0 +1,15 @@
+---------------------------------------------------------
+-- Clean up any Make/Model garbage
+---------------------------------------------------------
+UPDATE [QSM].[CarData].[Car]
+	SET Make = e.Make
+FROM [QSM].[CarData].[Car] c, [QSM].[CarData].[MakeErr] e
+WHERE c.Make NOT IN (select Make from CarData.Make)
+  AND c.Make = e.MakeErr;
+
+UPDATE [QSM].[CarData].[Car]
+	SET Model = e.Model
+FROM [QSM].[CarData].[Car] c, [CarData].[ModelErr] e
+WHERE c.Make = e.Make
+  AND c.Model = e.ModelErr;
+
