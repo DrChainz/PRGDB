@@ -12,7 +12,7 @@ USE [PRG];
 GO
 
 create table [dbo].[Tmp] ( LoadData char(1) NOT NULL );
-INSERT [dbo].[Tmp] SELECT 'N';
+INSERT [dbo].[Tmp] SELECT 'Y';
 GO
 
 ---------------------------------------
@@ -1298,7 +1298,7 @@ CREATE TABLE [Car].[Contract]
 	[SaleCnt]				[tinyint]			NOT NULL,
 	[PaidInFull]			[Legend].[YesNo]	NOT NULL,
 	[DownPayment]			[money]				NULL,
-	[Retail++]				[money]				NOT NULL,
+	[RetailPlusPlus]		[money]				NOT NULL,
 	[Retail]				[money]				NOT NULL,
 	[Discount]				[money]				NOT NULL,
 	[TotalCost]				[money]				NOT NULL,		-- outta be Retail - Discount unless is 0 and total is greater than Retail and more towards Retail++
@@ -1638,7 +1638,13 @@ SET IDENTITY_INSERT [Car].[Contract] ON;
 
 -- select top 100 * from car.car where year = '2011'
 
-DECLARE @CompanyId_Sunpath int = (SELECT CompanyId FROM [Contract].[Company] WHERE Company = 'SunPath');
+DECLARE @AdminId_Sunpath int = (SELECT AdminId FROM [Contract].[Admin] WHERE Name = 'SunPath');
+DECLARE @AdminId_AAC int = (SELECT AdminId FROM [Contract].[Admin] WHERE Name = 'American Auto Shield');
+DECLARE @AdminId_Royal int = (SELECT AdminId FROM [Contract].[Admin] WHERE Name = 'Royal');
+DECLARE @AdminId_Sentinel int = (SELECT AdminId FROM [Contract].[Admin] WHERE Name = 'Sentinel');
+
+select * from [Contract].[Admin]
+
 DECLARE @PayPlanId int = (SELECT PayPlanId from [Contract].[PayPlan] WHERE Name = 'Bizkit');
 DECLARE @EmplId_Tawny int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
 DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
@@ -1646,21 +1652,21 @@ DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE Fir
 
 -- select * from Policy.Policy
 
-INSERT [Car].[Contract] (	ContractId, AdminId, AdminContractNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [Retail++], Discount,
+INSERT [Car].[Contract] (	ContractId, AdminId, AdminContractNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull, Retail, [RetailPlusPlus], Discount,
 							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
 
-SELECT	1 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC123' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
-		2105 as Retail, 2600 as [Retail++], 500 as Discount, 1605 as TotalCost, 595 as AdminCost, 1010 as GrossProfit,
+SELECT	1 as ContractId, @AdminId_Sunpath as CompanyId, 'ABC123' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '1FMEU75847UB32730' as VIN, '2015-03-27' as ClosingDt, 1 as SaleCnt, 'Y' as PaidInFull,
+		2105 as Retail, 2600 as [RetailPlusPlus], 500 as Discount, 1605 as TotalCost, 595 as AdminCost, 1010 as GrossProfit,
 		'2015-03-27' as FirstPaymentDt, 0 as Months  -- , 0 as PaymentFrequency
 ;
 
 INSERT [Car].[Contract] (	ContractId, AdminId, AdminContractNum, Front_EmplId, Sale_EmplId, PayPlanId, Vin, ClosingDt, SaleCnt, PaidInFull,
-							DownPayment, Retail, [Retail++], Discount,
+							DownPayment, Retail, [RetailPlusPlus], Discount,
 							TotalCost, AdminCost, GrossProfit, FirstPaymentDt, Months ) -- , PaymentFrequency )
 
-SELECT	2 as PolicyId, @CompanyId_Sunpath as CompanyId, 'ABC124' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '19UUA8F20BA000150' as VIN,
+SELECT	2 as ContractId, @AdminId_Sunpath as CompanyId, 'ABC124' as CompanyPolicyNum, @EmplId_Chainz, @EmplId_Tawny as EmplId, @PayPlanId, '19UUA8F20BA000150' as VIN,
 		'2015-03-27' as ClosingDt, 2 as SaleCnt, 'N' as PaidInFull, 295 as DownPayment,
-		2300 as Retail, 2800 as [Retail++], 200 as Discount, 2100 as TotalCost, 795 as AdminCost, 1305 as GrossProfit,
+		2300 as Retail, 2800 as [RetailPlusPlus], 200 as Discount, 2100 as TotalCost, 795 as AdminCost, 1305 as GrossProfit,
 		'2015-03-27' as FirstPaymentDt, 12 as Months  -- , 0 as PaymentFrequency
 ;
 SET IDENTITY_INSERT [Policy].[Policy] OFF;
