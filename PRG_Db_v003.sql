@@ -390,21 +390,23 @@ GO
 ---------------------------------------
 --	Call Disposition Codes and their meanings
 -----------------------------------------
+/*
 CREATE TABLE [Legend].[Disp]
 (
 	[DispCd]		[char](4)		NOT NULL,
 	[DispDesc]		[varchar](50)	NOT NULL,
 PRIMARY KEY ([DispCd])
 ) ON [PRIMARY]
- GO
+-- GO
 
 INSERT [Legend].[Disp] (DispCd, DispDesc)
 SELECT 'DNC','Do Not Call' UNION
 SELECT 'NI', 'Not Interested' UNION
 SELECT 'NOC', 'Doesn''t Own Car' UNION
 SELECT 'WN', 'Wrong Number'
-GO
+-- GO
 -- set identity_insert [Legend].[Disp] OFF;
+*/
 
 ---------------------------------------
 --
@@ -763,127 +765,6 @@ AS
 GO
 
 
---***************************************
---
---***************************************
-CREATE Schema [DNC];
-GO
-
----------------------------------------
---
------------------------------------------
-CREATE TABLE [DNC].[AreaCd]
-(
-	[AreaCd]	[Legend].[AreaCd] NOT NULL,
-PRIMARY KEY ([AreaCd])
-) ON [PRIMARY]
- GO
-
-------------------------------------------
--- move area codes we already purchased
-------------------------------------------
-INSERT [DNC].[AreaCd] (AreaCd)
-SELECT AreaCd
-FROM [PrivateReserve].[DNC].[AreaCd]
- GO
-
----------------------------------------
---
------------------------------------------
-CREATE TABLE [DNC].[DNC]
-(
-	[Phone]		[Legend].[Phone]	NOT NULL UNIQUE,
-	[DispCd]	[char](4)			NOT NULL,
-	[CallTm]	[datetime]			NULL,
-FOREIGN KEY ([DispCd]) REFERENCES [Legend].[Disp](DispCd)
-) ON [PRIMARY]
- GO
-
-------------------------------------------
--- move some data into here to get started
-------------------------------------------
-DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
-IF (@LoadData = 'Y')
-BEGIN
-	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
-	SELECT Phone, DispCd, CallTm
-	FROM [PrivateReserve].[DNC].[DNC];
-
-	-- Unsure why this is here - do some investigation as think depreciated
-	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
-	SELECT DISTINCT Phone, 'DNC', GETDATE()
-	FROM [PrivateReserve].[CarData].[DNC_Preexisting]
-	WHERE Phone NOT IN (SELECT Phone FROM [DNC].[DNC])
-	  AND Phone LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
-END
-GO
-
----------------------------------------
---
------------------------------------------
-CREATE TABLE [DNC].[WirelessBlocks]
-(
-	[NPA] [char](3) NOT NULL,
-	[NXX] [char](3) NOT NULL,
-	[X] [char](1) NOT NULL,
-	[CATEGORY] [varchar](10) NOT NULL,
-	[PhoneBegin] [char](7) NULL
-) ON [PRIMARY]
- GO
-
----------------------------------------
---
------------------------------------------
-CREATE TABLE [DNC].[WirelessToLandline]
-(
-	[Phone]		[Legend].[Phone] NOT NULL	UNIQUE
-) ON [PRIMARY]
-GO
-
-
----------------------------------------
---
------------------------------------------
-CREATE TABLE [DNC].[LandlineToWireless]
-(
-	[Phone]		[Legend].[Phone] NOT NULL	UNIQUE
-) ON [PRIMARY]
- GO
-
-DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
-IF (@LoadData = 'Y')
-BEGIN
-	INSERT [DNC].[WirelessBlocks] ( NPA, NXX, X, CATEGORY, PhoneBegin )
-	SELECT  NPA, NXX, X, CATEGORY, PhoneBegin
-	FROM [PrivateReserve].[DNC].[WirelessBlocks];
-
-	INSERT [DNC].[WirelessToLandline] (Phone)
-	SELECT Phone
-	FROM [PrivateReserve].[DNC].[WirelessToLandline];
-
-	INSERT [DNC].[LandlineToWireless] (Phone)
-	SELECT Phone
-	FROM [PrivateReserve].[DNC].[LandlineToWireless];
-END
-GO
-
----------------------------------------
---
------------------------------------------
-CREATE TABLE [DNC].[Wireless_LoadLog]
-(
-	[Dt]					[smalldatetime] NOT NULL UNIQUE,
-	[WirelessBlockCnt]		[int]			NOT NULL,
-	[WirelessToLandlineCnt] [int]			NOT NULL,
-	[LandlineToWirelessCnt] [int]			NOT NULL,
-FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt)
-) ON [PRIMARY]
-GO
-
-INSERT [DNC].[Wireless_LoadLog] (Dt, WirelessBlockCnt, WirelessToLandlineCnt, LandlineToWirelessCnt )
-SELECT LoadDt, WirelessCnt, WirelessToLandlineCnt, LandlineToWirelessCnt
-FROM [PrivateReserve].[DNC].[Wireless_LoadLog];
-GO
 
 --***************************************
 --
@@ -1023,14 +904,51 @@ where Make not in (select Make from [Car].[MakeExclude])
   and Make not in (select MakeErr from [Car].[MakeErr])
 */
 
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Car].[ModelType]
+(
+	[ModelType]		[varchar](30)	NOT NULL,
+	[Description]	[varchar](255)	NULL,
+PRIMARY KEY (ModelType) 
+);
+
+INSERT [Car].[ModelType] (ModelType, Description)
+select 'Car', 'Default' UNION
+select 'CUV', 'Crossover Utility Vehicle' UNION
+select 'MPV', 'Multi-Purpose Vehicle' UNION			-- minivan
+select 'Sedan', '' UNION
+select 'Sport', '' UNION
+select 'Sport Sedan', '' UNION
+select 'SUV', 'Sport Utility Vehicle' UNION
+select 'Truck', '' UNION
+select 'Van', ''
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Car].[ModelLevel]
+(
+	[ModelLevel]	[varchar](30)	NOT NULL,
+PRIMARY KEY (ModelLevel) 
+);
+
+insert [Car].[ModelLevel] (ModelLevel)
+select 'Entry' union
+select 'Luxury' union
+select 'Up Scale'
 
 ---------------------------------------
 --
 -----------------------------------------
 CREATE TABLE [Car].[MakeModel]
 (
-	[Make]		[varchar](20) NOT NULL,
-	[Model]		[varchar](30) NOT NULL,
+	[Make]			[varchar](20)	NOT NULL,
+	[Model]			[varchar](30)	NOT NULL,
+	[ClassSeries]	[varchar](30)	NULL,
+	[ModelType]		[varchar](30)	NOT NULL,
+	[ModelLevel]	[varchar](30)	NULL,
 FOREIGN KEY ([Make]) REFERENCES [Car].[Make](Make)
 ) ON [PRIMARY]
 GO
@@ -1038,10 +956,15 @@ GO
 CREATE UNIQUE INDEX PK_MakeModel ON [Car].[MakeModel] ([Make], [Model])
 GO
 
-INSERT [Car].[MakeModel] ( Make, Model )
-SELECT Make, Model
-FROM [PrivateReserve].[Car].[MakeModel]
+INSERT [Car].[MakeModel] ( Make, Model, ModelType )
+SELECT Make, Model, 'Car'
+FROM [QSM].[CarData].[MakeModel]
 GO
+
+UPDATE [Car].[MakeModel] SET ClassSeries = o.ClassSeries, ModelLevel = o.Level, ModelType = o.Type
+FROM [Car].[MakeModel] m, [QSM].[CarData].[MakeModelOfficial] o
+WHERE m.Make = o.Make
+  AND m.Model = o.Model;
 
 ---------------------------------------
 --
@@ -1070,14 +993,17 @@ CREATE TABLE [Car].[Car]
 	[Model]			[varchar](30)		NOT NULL,
 	[Year]			[Legend].[Year]		NOT NULL,
 	[Phone]			[Legend].[Phone]	NOT NULL,
-	[Wireless]		[Legend].[YesNo]	NOT NULL,
-	[Exclude]		[Legend].[YesNo]	NOT NULL,
 	[FirstName]		[varchar](20)		NULL,
 	[LastName]		[varchar](30)		NULL,
 	[Address]		[varchar](50)		NULL,
+	[Address2]		[varchar](50)		NULL,
 	[City]			[varchar](30)		NULL,
 	[State]			[dbo].[State]		NOT NULL,
 	[Zip]			[varchar](10)		NULL,
+	[Odom]			[varchar](20)		NULL,
+	[Wireless]		[Legend].[YesNo]	NOT NULL,
+	[Exclude]		[Legend].[YesNo]	NOT NULL,
+
 PRIMARY KEY ([VIN]),
 FOREIGN KEY ([Make]) REFERENCES [Car].[Make] ( Make ),
 FOREIGN KEY ([Year]) REFERENCES [Car].[Year] ( Year ),
@@ -1106,8 +1032,19 @@ group by Make
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
-	INSERT [Car].[Car] (VIN, Make, Model, Year, Phone, Wireless, Exclude, FirstName, LastName, Address, City, State, Zip)
-	select VIN, Make, Model, Year, Phone, Wireless, Exclude, FirstName, LastName, Address1, City, State, Zip
+	INSERT [Car].[Car] (VIN, Make, Model, Year, Phone, Wireless, Exclude, FirstName, LastName, Address, Address2, City, State, Zip, Odom)
+	select top 10000 VIN, Make, Model, Year, Phone, Wireless, Exclude, FirstName, LastName, Address1, Address2, City, State, Zip, Odom
+	from [QSM].[CarData].[Car]
+	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
+	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
+	  and Year in (SELECT Year FROM [PRG].[Car].[Year])
+	  and State in (SELECT State FROM [PRG].[Legend].[State])
+-- 	  and Exclude = 'N'
+	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+
+
+	INSERT [Car].[Car] (VIN, Make, Model, Year, Phone, Wireless, Exclude, FirstName, LastName, Address, Address2, City, State, Zip)
+	select VIN, Make, Model, Year, Phone, Wireless, Exclude, FirstName, LastName, Address1, Address2, City, State, Zip
 	from [QSM].[CarData].[Car]
 	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
 	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
@@ -1115,7 +1052,8 @@ BEGIN
 	  and State in (SELECT State FROM [PRG].[Legend].[State])
 -- 	  and Exclude = 'N'
 	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-	  and vin in ('1FMEU75847UB32730','19UUA8F20BA000150')
+	  and vin in ('1FMEU75847UB32730','19UUA8F20BA000150');
+
 
 --	  and Make = 'KIA' -- test 
 END
@@ -1155,17 +1093,182 @@ GO
 
 CREATE TABLE [Call].[Disp]
 (
-	Disp		varchar(5)		NOT NULL	UNIQUE,
+	DispCd		varchar(5)		NOT NULL	UNIQUE,
 	LongDisp	varchar(30)		NOT NULL,
-PRIMARY KEY (Disp)
+PRIMARY KEY (DispCd)
 )
 GO
 
-INSERT [Call].[Disp] (Disp, LongDisp)
-SELECT 'DNC', 'Do Not Call' UNION
-SELECT 'A', 'Answering Machine' UNION
-SELECT 'NI', 'Not Interested'
+INSERT [Call].[Disp] (DispCd, LongDisp)
+SELECT 'NEW','New Lead' UNION
+SELECT 'QUEUE','Lead To Be Called' UNION
+SELECT 'INCALL','Lead Being Called' UNION
+SELECT 'DROP','Agent Not Available' UNION
+SELECT 'XDROP','Agent Not Available IN' UNION
+SELECT 'NA','No Answer AutoDial' UNION
+SELECT 'CALLBK','Call Back' UNION
+SELECT 'CBHOLD','Call Back Hold' UNION
+SELECT 'AA','Answering Machine Auto' UNION
+SELECT 'AM','Answering Machine SentToMesg' UNION
+SELECT 'AL','Answering Machine Msg Played' UNION
+SELECT 'AFAX','Fax Machine Auto' UNION
+SELECT 'AB','Busy Auto' UNION
+SELECT 'B','Busy' UNION
+SELECT 'DC','Disconnected Number' UNION
+SELECT 'ADC','Disconnected Number Auto' UNION
+SELECT 'DNC','DO NOT CALL' UNION
+SELECT 'DNCL','DO NOT CALL Hopper Sys Match' UNION
+SELECT 'DNCC','DO NOT CALL Hopper Camp Match' UNION
+SELECT 'N','No Answer' UNION
+SELECT 'NI','Not Interested' UNION
+SELECT 'NP','No Pitch No Price' UNION
+SELECT 'PU','Call Picked Up' UNION
+SELECT 'PM','Played Message' UNION
+SELECT 'XFER','Call Transferred' UNION
+SELECT 'ERI','Agent Error' UNION
+SELECT 'SVYEXT','Survey sent to Extension' UNION
+SELECT 'SVYVM','Survey sent to Voicemail' UNION
+SELECT 'SVYHU','Survey Hungup' UNION
+SELECT 'SVYREC','Survey sent to Record' UNION
+SELECT 'QVMAIL','Queue Abandon Voicemail Left' UNION
+SELECT 'RQXFER','Re-Queue' UNION
+SELECT 'TIMEOT','Inbound Queue Timeout Drop' UNION
+SELECT 'AFTHRS','Inbound After Hours Drop' UNION
+SELECT 'NANQUE','Inbound No Agent No Queue Drop' UNION
+SELECT 'PDROP','Outbound Pre-Routing Drop' UNION
+SELECT 'IVRXFR','Outbound drop to Call Menu' UNION
+SELECT 'SVYCLM','Survey sent to Call Menu' UNION
+SELECT 'MLINAT','Multi-Lead auto-alt set inactv' UNION
+SELECT 'MAXCAL','Inbound Max Calls Drop' UNION
+SELECT 'LRERR','Outbound Local Channel Res Err' UNION
+SELECT 'QCFAIL','QC_FAIL_CALLBK' UNION
+SELECT 'ADCT','Disconnected Number Temporary' UNION
+SELECT 'LSMERG','Agent lead search old lead mrg'
+;
 GO
+
+--***************************************
+--
+--***************************************
+CREATE Schema [DNC];
+GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [DNC].[AreaCd]
+(
+	[AreaCd]	[Legend].[AreaCd] NOT NULL,
+PRIMARY KEY ([AreaCd])
+) ON [PRIMARY]
+ GO
+
+------------------------------------------
+-- move area codes we already purchased
+------------------------------------------
+INSERT [DNC].[AreaCd] (AreaCd)
+SELECT AreaCd
+FROM [PrivateReserve].[DNC].[AreaCd]
+ GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [DNC].[DNC]
+(
+	[Phone]		[Legend].[Phone]	NOT NULL UNIQUE,
+	[DispCd]	[char](4)			NOT NULL,
+	[CallTm]	[datetime]			NULL,
+FOREIGN KEY ([DispCd]) REFERENCES [Call].[Disp](DispCd)
+) ON [PRIMARY]
+ GO
+
+------------------------------------------
+-- move some data into here to get started
+------------------------------------------
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
+	SELECT Phone, DispCd, CallTm
+	FROM [PrivateReserve].[DNC].[DNC];
+
+	-- Unsure why this is here - do some investigation as think depreciated
+	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
+	SELECT DISTINCT Phone, 'DNC', GETDATE()
+	FROM [PrivateReserve].[CarData].[DNC_Preexisting]
+	WHERE Phone NOT IN (SELECT Phone FROM [DNC].[DNC])
+	  AND Phone LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+END
+GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [DNC].[WirelessBlocks]
+(
+	[NPA] [char](3) NOT NULL,
+	[NXX] [char](3) NOT NULL,
+	[X] [char](1) NOT NULL,
+	[CATEGORY] [varchar](10) NOT NULL,
+	[PhoneBegin] [char](7) NULL
+) ON [PRIMARY]
+ GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [DNC].[WirelessToLandline]
+(
+	[Phone]		[Legend].[Phone] NOT NULL	UNIQUE
+) ON [PRIMARY]
+GO
+
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [DNC].[LandlineToWireless]
+(
+	[Phone]		[Legend].[Phone] NOT NULL	UNIQUE
+) ON [PRIMARY]
+ GO
+
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+	INSERT [DNC].[WirelessBlocks] ( NPA, NXX, X, CATEGORY, PhoneBegin )
+	SELECT  NPA, NXX, X, CATEGORY, PhoneBegin
+	FROM [PrivateReserve].[DNC].[WirelessBlocks];
+
+	INSERT [DNC].[WirelessToLandline] (Phone)
+	SELECT Phone
+	FROM [PrivateReserve].[DNC].[WirelessToLandline];
+
+	INSERT [DNC].[LandlineToWireless] (Phone)
+	SELECT Phone
+	FROM [PrivateReserve].[DNC].[LandlineToWireless];
+END
+GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [DNC].[Wireless_LoadLog]
+(
+	[Dt]					[smalldatetime] NOT NULL UNIQUE,
+	[WirelessBlockCnt]		[int]			NOT NULL,
+	[WirelessToLandlineCnt] [int]			NOT NULL,
+	[LandlineToWirelessCnt] [int]			NOT NULL,
+FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt)
+) ON [PRIMARY]
+GO
+
+INSERT [DNC].[Wireless_LoadLog] (Dt, WirelessBlockCnt, WirelessToLandlineCnt, LandlineToWirelessCnt )
+SELECT LoadDt, WirelessCnt, WirelessToLandlineCnt, LandlineToWirelessCnt
+FROM [PrivateReserve].[DNC].[Wireless_LoadLog];
+GO
+
 
 --***************************************
 --
@@ -1340,12 +1443,12 @@ FOREIGN KEY ([PaymentDt]) REFERENCES [Legend].[Day] (Dt),
 );
 GO
 
-CREATE TABLE [Contract].[AdminWeek]
+CREATE TABLE [Contract].[AdminAdvanceWeek]
 (
 	[AdminId]				[int]				NOT NULL,
+	[WeekNum]				[smallint]			NOT NULL,
 	[BeginDt]				[smalldatetime]		NOT NULL,
 	[EndDt]					[smalldatetime]		NOT NULL,
-	[WeekNum]				[smallint]			NOT NULL,
 FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId),
 FOREIGN KEY ([BeginDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([EndDt]) REFERENCES [Legend].[Day] (Dt),
@@ -1353,15 +1456,32 @@ FOREIGN KEY ([EndDt]) REFERENCES [Legend].[Day] (Dt),
 GO
 
 ---------------------------------------
--- drop table [Contract].[Advance]
+-- All the Contracts tied to the advance
 -----------------------------------------
-CREATE TABLE [Contract].[Advance]
+CREATE TABLE [Contract].[AdminAdvanceWeekContract]
 (
 	[AdminId]				[int]				NOT NULL,
-FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId),		
+	[WeekNum]				[smallint]			NOT NULL,
+	[ContractId]			[int]				NOT NULL,
+FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId)
 );
 GO
 
+CREATE UNIQUE INDEX PK_AdminAdvanceWeekContract ON [Contract].[AdminAdvanceWeekContract] (AdminId, WeekNum);
+GO
+
+---------------------------------------
+-- drop table [Contract].[Advance]
+-----------------------------------------
+/*
+CREATE TABLE [Contract].[AdminAdvanceWeek]
+(
+	[AdminId]				[int]				NOT NULL,
+	[WeekNum]				[smallint]			NOT NULL,
+
+FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId),		
+);
+*/
 
 /* --------------------------------------------------------------------------------------------------------
 
@@ -1643,7 +1763,7 @@ DECLARE @AdminId_AAC int = (SELECT AdminId FROM [Contract].[Admin] WHERE Name = 
 DECLARE @AdminId_Royal int = (SELECT AdminId FROM [Contract].[Admin] WHERE Name = 'Royal');
 DECLARE @AdminId_Sentinel int = (SELECT AdminId FROM [Contract].[Admin] WHERE Name = 'Sentinel');
 
-select * from [Contract].[Admin]
+-- select * from [Contract].[Admin]
 
 DECLARE @PayPlanId int = (SELECT PayPlanId from [Contract].[PayPlan] WHERE Name = 'Bizkit');
 DECLARE @EmplId_Tawny int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
@@ -1669,7 +1789,7 @@ SELECT	2 as ContractId, @AdminId_Sunpath as CompanyId, 'ABC124' as CompanyPolicy
 		2300 as Retail, 2800 as [RetailPlusPlus], 200 as Discount, 2100 as TotalCost, 795 as AdminCost, 1305 as GrossProfit,
 		'2015-03-27' as FirstPaymentDt, 12 as Months  -- , 0 as PaymentFrequency
 ;
-SET IDENTITY_INSERT [Policy].[Policy] OFF;
+SET IDENTITY_INSERT [Car].[Contract] OFF;
 
 END
 GO
