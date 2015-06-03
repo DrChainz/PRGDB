@@ -64,16 +64,26 @@ AS
 @Val IN ('N','Y')
 GO
 
-
 CREATE RULE [Legend].[YesNoUnknown] 
 AS
 @Val IN ('U','N','Y')
+GO
+
+CREATE RULE [Legend].[Gender]
+AS
+@Val IN ('U','M','F')
 GO
 
 CREATE RULE [Legend].[WeekDay]
 AS
 @Val IN ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
 GO
+
+CREATE RULE [Legend].[SaleRole]
+AS
+@Val IN ('Open','Sale','TO')
+GO
+
 
 ---------------------------------------
 -- User Defined Types
@@ -108,6 +118,12 @@ GO
 CREATE TYPE [Legend].[YesNoUnknown] FROM [char](1) NOT NULL
 GO
 
+CREATE TYPE [Legend].[Gender] FROM [char](1) NOT NULL
+GO
+
+CREATE TYPE [Legend].[SaleRole] FROM [varchar](4) NOT NULL
+GO
+
 ---------------------------------------
 -- Bind the rules the types
 ---------------------------------------
@@ -139,6 +155,12 @@ sp_bindrule '[Legend].[YesNo]', '[Legend].[YesNo]';
 GO
 
 sp_bindrule '[Legend].[YesNoUnknown]', '[Legend].[YesNoUnknown]';
+GO
+
+sp_bindrule '[Legend].[Gender]', '[Legend].[Gender]';
+GO
+
+sp_bindrule '[Legend].[SaleRole]', '[Legend].[SaleRole]';
 GO
 
 ---------------------------------------
@@ -252,6 +274,37 @@ SELECT 'PR','Puerto Rico', 'EST' UNION
 SELECT 'VI','U.S. Virgin Islands', 'EST'
 ;
 GO
+
+---------------------------------------
+-- drop table [Legend].[FirstName];
+-----------------------------------------
+CREATE TABLE [Legend].[FirstName]
+(
+	FirstName		[varchar](20)			NOT NULL,
+	Gender			[Legend].[Gender]		NOT NULL,
+	Cnt				[int]					NOT NULL,
+	PercentWhole	[numeric](5,5)			NOT NULL
+);
+
+CREATE UNIQUE CLUSTERED INDEX PK_FirstName ON [Legend].[FirstName] (FirstName);
+
+-----------------------------------------
+-- top 5000 are a bit more than 92%
+-----------------------------------------
+INSERT [Legend].[FirstName] (FirstName, Gender, Cnt, PercentWhole)
+SELECT TOP 5000 rtrim(FirstName), 'U' as Gender, Cnt, PercentWhole
+FROM [Joe].[legend].[FirstName]
+WHERE BadName = 'N'
+  AND LEN(FirstName) <= 20
+ORDER BY Cnt DESC;
+
+/*
+select max(len(FirstName)) from [Legend].[FirstName]
+select FirstName from [Legend].[FirstName] where len(FirstName) = 11
+select * from [Legend].[FirstName];
+*/
+
+-- select * from [Legend].[FirstName];
 
 ---------------------------------------
 --
@@ -411,16 +464,18 @@ SELECT 'WN', 'Wrong Number'
 ---------------------------------------
 --
 -----------------------------------------
+/*
 CREATE TABLE [Legend].[FirstName]
 (
 	[FirstName]		[varchar](50)		NOT NULL UNIQUE,
 	[Cnt]			[int]				NULL,
 	[BadName]		[Legend].[YesNo]	NOT NULL
 ) ON [PRIMARY]
-GO
+-- GO
+*/
 
 -- save time while testing
-
+/*
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
@@ -429,6 +484,7 @@ BEGIN
 	FROM [QSM].[Legend].[FirstName]
 END
 GO
+*/
 
 -- Figure out how to create the SIC tables correctly.
 -- this also likely oughta have a log entry associated with it such that we know
@@ -815,6 +871,7 @@ SELECT State
 FROM [PrivateReserve].[Legend].[ExcludeState]
 GO
 
+
 ---------------------------------------
 --
 -----------------------------------------
@@ -926,7 +983,7 @@ where Make not in (select Make from [Car].[MakeExclude])
 -----------------------------------------
 CREATE TABLE [Car].[ModelType]
 (
-	[ModelType]		[varchar](30)	NOT NULL,
+	[ModelType]		[varchar](20)	NOT NULL,
 	[Definition]	[varchar](255)	NULL,
 PRIMARY KEY (ModelType) 
 );
@@ -947,7 +1004,7 @@ select 'Van', ''
 -----------------------------------------
 CREATE TABLE [Car].[ModelLevel]
 (
-	[ModelLevel]	[varchar](30)	NOT NULL,
+	[ModelLevel]	[varchar](20)	NOT NULL,
 PRIMARY KEY (ModelLevel) 
 );
 
@@ -964,7 +1021,7 @@ CREATE TABLE [Car].[MakeModel]
 	[Make]			[varchar](20)	NOT NULL,
 	[Model]			[varchar](30)	NOT NULL,
 	[ClassSeries]	[varchar](30)	NULL,
-	[ModelType]		[varchar](30)	NOT NULL,
+	[ModelType]		[varchar](20)	NOT NULL,
 	[ModelLevel]	[varchar](30)	NULL,
 FOREIGN KEY ([Make]) REFERENCES [Car].[Make](Make)
 ) ON [PRIMARY]
@@ -1027,7 +1084,6 @@ FOREIGN KEY ([Year]) REFERENCES [Car].[Year] ( Year ),
 FOREIGN KEY ([State]) REFERENCES [Legend].[State] ( State )
 );
 GO
-
 
 /*
 
@@ -1092,9 +1148,9 @@ CREATE TABLE [Car].[GoForte_Extract]
 	[Zip]			[char](5)			NULL,
 	[Phone]			[Legend].[Phone]	NOT NULL,
 	[VIN]			[Car].[Vin]			NOT NULL,
-	[Year]			[Legend].[Year]		NOT NULL,
-	[Model]			[varchar](30)		NOT NULL,
 	[Make]			[varchar](20)		NOT NULL,
+	[Model]			[varchar](30)		NOT NULL,
+	[Year]			[Legend].[Year]		NOT NULL,
 	[Odom]			[varchar](10)		NULL,
 FOREIGN KEY ([VIN]) REFERENCES [Car].[Car](VIN),
 FOREIGN KEY ([State]) REFERENCES [Legend].[State](State)
@@ -1235,7 +1291,7 @@ CREATE TABLE [DNC].[DNC_Log]
 ) ON [PRIMARY];
 GO
 
-select * from PrivateReserve.dnc.dnc_log order by Dt desc
+-- select * from PrivateReserve.dnc.dnc_log order by Dt desc
 
 
 ---------------------------------------
@@ -1355,14 +1411,14 @@ SET IDENTITY_INSERT [Contract].[Finance] OFF;
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Contract].[Term]
+CREATE TABLE [Contract].[PayPlanTerm]
 (
-	[Months]		[smallint]			NOT NULL,
-PRIMARY KEY (Months)
+	[PayPlanTerm]		[smallint]			NOT NULL,
+PRIMARY KEY (PayPlanTerm)
 );
 GO
 
-INSERT [Contract].[Term] (Months)
+INSERT [Contract].[PayPlanTerm] (PayPlanTerm)
 SELECT 0 UNION
 SELECT 6 UNION
 SELECT 9 UNION
@@ -1378,17 +1434,17 @@ GO
 CREATE TABLE [Contract].[FinanceTerm]
 (
 	[FinanceId]		[int]			NOT NULL,
-	[Months]		[smallint]		NOT NULL,
+	[PayPlanTerm]	[smallint]		NOT NULL,
 	[AdvanceRate]	[numeric](3,2)	NOT NULL,
 	[DiscountFee]	[numeric](4,4)	NOT NULL,
 	[MinFee]		money			NOT NULL,
 FOREIGN KEY ([FinanceId]) REFERENCES [Contract].[Finance] (FinanceId),
-FOREIGN KEY ([Months]) REFERENCES [Contract].[Term] (Months)
+FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[PayPlanTerm] (PayPlanTerm)
 );
 
-CREATE UNIQUE INDEX PK_Contract_FinanceTerm ON [Contract].[FinanceTerm] (FinanceId, Months);
+CREATE UNIQUE INDEX PK_Contract_FinanceTerm ON [Contract].[FinanceTerm] (FinanceId, PayPlanTerm);
 
-INSERT [Contract].[FinanceTerm] (FinanceId, Months, AdvanceRate, DiscountFee, MinFee)
+INSERT [Contract].[FinanceTerm] (FinanceId, PayPlanTerm, AdvanceRate, DiscountFee, MinFee)
 SELECT 1, 6, .75, .06, 180 UNION
 SELECT 1, 9, .75, .06, 180 UNION
 SELECT 1, 12, .75, .06, 180 UNION
@@ -1418,51 +1474,104 @@ SELECT 1, 'Bizkit', @RoleId_Closer ;
 SET IDENTITY_INSERT [Contract].[PayPlan] OFF;
 GO
 
+-- drop table [Car].[Contract];
+
 ---------------------------------------
 --
 -----------------------------------------
 CREATE TABLE [Car].[Contract]
 (
 	[ContractId]			[int]				NOT NULL	IDENTITY(1,1),
-	[AdminId]				[int]				NOT NULL,
-	[AdminContractNum]		[varchar](20)		NULL,
- 	[ContractTerm]			[smallint]			NULL,		-- length of protection of vehichle
-	[Mileage]				[int]				NULL,		-- coverage milage
-	[Front_EmplId]			[int]				NOT NULL,
-	[Sale_EmplId]			[int]				NOT NULL,
-	[TO_EmplId]				[int]				NULL,
-	[PayPlanId]				[int]				NOT NULL,
-	[Vin]					[Car].[Vin]			NOT NULL,	-- A car can have more than one contract written on it - its the real world
-	[ClosingDt]				[smalldatetime]		NOT NULL,
-	[SaleCnt]				[tinyint]			NOT NULL,
+	[AppNum]				[varchar](20)		NOT NULL,	-- likely oughta be unique
+	[EmplId_Open]			[int]				NOT NULL,
+	[EmplId_Sale]			[int]				NOT NULL,
+	[EmplId_TO]				[int]				NULL,
+	[FirstName]				[varchar](30)		NULL,
+	[LastName]				[varchar](30)		NULL,
+	[Address]				[varchar](50)		NULL,
+	[City]					[varchar](30)		NULL,
+	[State]					[dbo].[State]		NOT NULL,
+	[Zip]					[varchar](10)		NULL,
+	[Phone]					[Legend].[Phone]	NULL,
+	[Phone2]				[Legend].[Phone]	NULL,
+	[Email]					[varchar](50)		NULL,
+	[SaleDt]				[smalldatetime]		NOT NULL,
+	[RateDt]				[smalldatetime]		NOT NULL,
+	[Vin]					[Car].[VIN]			NOT NULL,
+	[Make]					[varchar](20)		NOT NULL,
+	[Model]					[varchar](30)		NOT NULL,
+	[Year]					[Legend].[Year]		NOT NULL,
+	[Odom]					[int]				NULL,
+	[Coverage]				[varchar](20)		NULL,		-- likely shorter than this as appears to be a code
+	[Term]					[varchar](20)		NULL,		-- likely to be shorter as also a code like 72/70
+	[Deductable]			[money]				NULL,
+	[Class]					[varchar](10)		NULL,		-- also some kind of code
+	[AdminId]				[int]				NOT NULL,	-- SunPath
+	[CoverageType]			[varchar](30)		NOT NULL,	-- like some set of values need to discover ('Exclusion')
+	[FinanceId]				[int]				NOT NULL,	-- omnisure
+	[ExpDt]					[smalldatetime]		NOT NULL,
+	[ExpOdom]				[int]				NOT NULL,	-- figure this has to be a value cannot be nothing.
+	[FirstBillDt]			[smalldatetime]		NOT NULL,
+	[VehiclePrice]			[money]				NULL,
+	[RetailPlusPlus]		[money]				NULL,
+	[Retail]				[money]				NULL,
+	[CustomerCost]			[money]				NULL,
 	[PaidInFull]			[Legend].[YesNo]	NOT NULL,
-	[DownPayment]			[money]				NULL,
-	[RetailPlusPlus]		[money]				NOT NULL,
-	[Retail]				[money]				NOT NULL,
-	[Discount]				[money]				NOT NULL,
-	[TotalCost]				[money]				NOT NULL,		-- outta be Retail - Discount unless is 0 and total is greater than Retail and more towards Retail++
-	[AdminCost]				[money]				NOT NULL,
-	[GrossProfit]			[money]				NOT NULL,
-	[FirstPaymentDt]		[smalldatetime]		NULL,			-- Date the person is suppose to make 1st payment
-	[Months]				[smallint]			NOT NULL,		-- # payments to make 
+	[PayPlanType]			[varchar](30)		NOT NULL,	-- Finnance or pay in full ????
+	[PayPlanTerm]			[smallint]			NOT NULL,
+	[DownPayment]			[money]				NOT NULL,
+	[MonthPayment]			[money]				NOT NULL,
 	[IsCancelled]			[Legend].[YesNo]	NOT NULL,
 	[CancelDt]				[smalldatetime]		NULL,
 	[CancelReturnAmt]		[money]				NULL,
--- 	[PaymentFrequency]		[int]				NULL,		-- likely the same as the months - need to do some investigation
 PRIMARY KEY ([ContractId]),
 FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId),
-FOREIGN KEY ([Front_EmplId]) REFERENCES [Employee].[Employee] (EmplId),
-FOREIGN KEY ([Sale_EmplId]) REFERENCES [Employee].[Employee] (EmplId),
-FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
+FOREIGN KEY ([EmplId_Open]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([EmplId_Sale]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([EmplId_TO]) REFERENCES [Employee].[Employee] (EmplId),
+-- FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
 FOREIGN KEY ([Vin]) REFERENCES [Car].[Car] (Vin),
-FOREIGN KEY ([ClosingDt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([SaleDt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([RateDt]) REFERENCES [Legend].[Day] (Dt),
+FOREIGN KEY ([FirstBillDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([CancelDt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([Months]) REFERENCES [Contract].[Term] (Months)
+FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[PayPlanTerm] (PayPlanTerm)
 );
 GO
 
-CREATE UNIQUE INDEX UK_Contract_EmplId_ClosingDt_SaleCnt ON [Car].[Contract] ([Sale_EmplId], [ClosingDt], [SaleCnt] );
-GO
+-- we deal with the pay plan aspect of this 
+-- CREATE UNIQUE INDEX UK_Contract_EmplId_ClosingDt_SaleCnt ON [Car].[Contract] ([Sale_EmplId], [ClosingDt], [SaleCnt] );
+-- GO
+
+
+--------------------------------------------------------------------------
+-- Doubt this is how we do the thing going forward - thou an idea for now
+--------------------------------------------------------------------------
+-- CREATE TABLE [
+
+
+/*
+insert [PRG].[Car].[Contract] ( AppNum, EmplId_Open, EmplId_Sale, EmplId_TO, FirstName, LastName, Address, City, State, Zip,
+								Phone, Phone2, Email, SaleDt, RateDt, 
+								Vin, Make, Model, Year, Odom,
+								Coverage, Term, Deductable, Class,
+								AdminId, CoverageType, FinanceId, ExpDt, ExpOdom, FirstBillDt,
+								VehiclePrice, RetailPlusPlus, Retail, CustomerCost, PayPlanType,
+								PayPlanTerm, DownPayment, MonthPayment )
+
+select  'HZF036979' as AppNum, @EmplId_Open as Open_EmplId, @EmplId_Dan as Sale_EmplId, @EmplId_TO as TO_EmplId,
+		'Douglas' as FirstName, 'Melendez' as LastName, 
+		'1210 Hudson St' as Address, 'Hoboken' as City, 'NJ' as State, '07030-5411' as Zip,
+		'2012227502' as Phone, '2019145597' as Phone2, '' as Email,
+		'5/21/2015' as SaleDt, '5/21/2015' as RateDt,
+		'KNDMB233786198405' as Vin, 'KIA' as Make, 'Sedona' as Model, '2008' as Year, 7200 as Odom, 
+		'SPHDN' as Coverage, '72/70' as Term, 100 as Deductable, '0001' as Class,
+		@AdminId_SunPath as AdminId, 'Exclusion' as CoverageType, @FinanceId_Omni as FinanceId,
+		'06/19/2021' as ExpDt, 71000 as ExpOdom, 
+		'6/21/2015' as FirstBillDt,
+		0 as VehiclePrice, 3733 as RetailPlusPlus, 2800 as Retail, 2200 CustomerCost, 'Finance' as PayPlanType,
+		18 as PayPlanTerm, 295 DownPayment, 105.83 as MonthPayment
+*/
 
 ---------------------------------------
 -- drop table [Contract].[Payment]
@@ -1479,12 +1588,14 @@ FOREIGN KEY ([PaymentDt]) REFERENCES [Legend].[Day] (Dt),
 );
 GO
 
-CREATE TABLE [Contract].[AdminAdvanceWeek]
+CREATE TABLE [Contract].[AdminAdvance]
 (
+	[AdvanceId]				[int]				NOT NULL	IDENTITY(1,1),
 	[AdminId]				[int]				NOT NULL,
 	[WeekNum]				[smallint]			NOT NULL,
 	[BeginDt]				[smalldatetime]		NOT NULL,
 	[EndDt]					[smalldatetime]		NOT NULL,
+PRIMARY KEY (AdvanceId),
 FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId),
 FOREIGN KEY ([BeginDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([EndDt]) REFERENCES [Legend].[Day] (Dt),
@@ -1494,16 +1605,16 @@ GO
 ---------------------------------------
 -- All the Contracts tied to the advance
 -----------------------------------------
-CREATE TABLE [Contract].[AdminAdvanceWeekContract]
+CREATE TABLE [Contract].[AdminAdvanceContract]
 (
-	[AdminId]				[int]				NOT NULL,
-	[WeekNum]				[smallint]			NOT NULL,
+	[AdvanceId]				[int]				NOT NULL,
 	[ContractId]			[int]				NOT NULL,
-FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId)
+FOREIGN KEY ([AdvanceId]) REFERENCES [Contract].[AdminAdvance] (AdvanceId),
+FOREIGN KEY ([ContractId]) REFERENCES [Car].[Contract] (ContractId)
 );
 GO
 
-CREATE UNIQUE INDEX PK_AdminAdvanceWeekContract ON [Contract].[AdminAdvanceWeekContract] (AdminId, WeekNum);
+CREATE UNIQUE INDEX PK_AdminAdvanceContract ON [Contract].[AdminAdvanceContract] (AdvanceId, ContractId);
 GO
 
 ---------------------------------------
@@ -1643,20 +1754,21 @@ GO
 ---------------------------------------
 -- drop table [Employee].[GravyMod_Term]
 -----------------------------------------
-CREATE TABLE [Pay].[GravyMod_Term]
+CREATE TABLE [Pay].[GravyMod_PayPlanTerm]
 (
 	[PayPlanId]			[int]		NOT NULL,
-	[Months]			[smallint]	NOT NULL,
+	[PayPlanTerm]		[smallint]	NOT NULL,
 	[Subtract]			[money]		NOT NULL
 FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
-FOREIGN KEY ([Months]) REFERENCES [Contract].[Term] (Months)
+-- FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[Term] (Months)
+FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[PayPlanTerm] (PayPlanTerm)
 );
 GO
 
-CREATE UNIQUE INDEX PK_GravyMod_Term ON [Pay].[GravyMod_Term] ( [PayPlanId], [Months] );
+CREATE UNIQUE INDEX PK_GravyMod_PayPlanTerm ON [Pay].[GravyMod_PayPlanTerm] ( [PayPlanId], [PayPlanTerm] );
 GO
 
-INSERT [Pay].[GravyMod_Term] ( PayPlanId, Months, Subtract )
+INSERT [Pay].[GravyMod_PayPlanTerm] ( PayPlanId, PayPlanTerm, Subtract )
 SELECT 1, 0,   0 union
 SELECT 1, 6,   0 union
 SELECT 1, 9,  10 union
@@ -1666,9 +1778,25 @@ SELECT 1, 18, 40 union
 SELECT 1, 24, 40;
 GO
 
+
 ------------------------------------------
 -- 
 ------------------------------------------
+CREATE TABLE [Contract].[EmployeePay]
+(
+	[ContractId]		[int]					NOT NULL,
+	[EmplId]			[int]					NOT NULL,
+	[SaleRole]			[Legend].[SaleRole]		NOT NULL,
+	[PayPlanId]			[int]					NOT NULL,
+	[TransId]			[int]					NULL,
+FOREIGN KEY ([ContractId]) REFERENCES [Car].[Contract] (ContractId),
+FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
+FOREIGN KEY ([TransId]) REFERENCES [Acct].[Transaction] (TransId)
+);
+
+CREATE UNIQUE INDEX PK_ContractEmployeeSaleRole ON [Contract].[EmployeePay] ( ContractId, SaleRole );
+
 /*
 select * from [Policy].[PayPlan];
 select * from [Pay].[GravyMod_Payment];
@@ -1680,9 +1808,9 @@ select * from [Pay].[Sale]
 -- select * from pay.salebase
 
 
------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--*********************************************************************************************
 -- Put some sample in to get us going.
------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--*********************************************************************************************
 /*
 
 -------------------------
@@ -1790,6 +1918,7 @@ DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
 
+/*
 SET IDENTITY_INSERT [Car].[Contract] ON;
 
 -- select top 100 * from car.car where year = '2011'
@@ -1828,7 +1957,66 @@ SELECT	2 as ContractId, @AdminId_Sunpath as CompanyId, 'ABC124' as CompanyPolicy
 SET IDENTITY_INSERT [Car].[Contract] OFF;
 
 END
-GO
+ GO
+*/
+
+------------------------------------------------------------------
+-- Real Data that we figure out.
+------------------------------------------------------------------
+
+select * from [PRG].[Contract].[Finance]
+
+declare @FinanceId_Omni int = (select FinanceId from [PRG].[Contract].[Finance] where Name = 'OmniSure');
+
+declare @AdminId_SunPath int = (select AdminId from [PRG].[Contract].[Admin] where Name = 'Sunpath');
+-- select @AdminId;
+declare @EmplId_Open int = 1;
+declare @EmplId_TO int = NULL;
+declare @EmplId_Dan int = 3;
+
+/*
+insert [PRG].[Car].[Contract] ( AppNum, EmplId_Open, EmplId_Sale, EmplId_TO, FirstName, LastName, Address, City, State, Zip,
+								Phone, Phone2, Email, SaleDt, RateDt, 
+								Vin, Make, Model, Year, Odom,
+								Coverage, Term, Deductable, Class,
+								AdminId, CoverageType, FinanceId, ExpDt, ExpOdom, FirstBillDt,
+								VehiclePrice, RetailPlusPlus, Retail, CustomerCost, PayPlanType,
+								PayPlanTerm, DownPayment, MonthPayment )
+
+*/
+
+/*
+select  'HZF036979' as AppNum, @EmplId_Open as Open_EmplId, @EmplId_Dan as Sale_EmplId, @EmplId_TO as TO_EmplId,
+		'Douglas' as FirstName, 'Melendez' as LastName, 
+		'1210 Hudson St' as Address, 'Hoboken' as City, 'NJ' as State, '07030-5411' as Zip,
+		'2012227502' as Phone, '2019145597' as Phone2, '' as Email,
+		'5/21/2015' as SaleDt, '5/21/2015' as RateDt,
+		'KNDMB233786198405' as Vin, 'KIA' as Make, 'Sedona' as Model, '2008' as Year, 7200 as Odom, 
+		'SPHDN' as Coverage, '72/70' as Term, 100 as Deductable, '0001' as Class,
+		@AdminId_SunPath as AdminId, 'Exclusion' as CoverageType, @FinanceId_Omni as FinanceId,
+		'06/19/2021' as ExpDt, 71000 as ExpOdom, 
+		'6/21/2015' as FirstBillDt,
+		0 as VehiclePrice, 3733 as RetailPlusPlus, 2800 as Retail, 2200 CustomerCost, 'Finance' as PayPlanType,
+		18 as PayPlanTerm, 295 DownPayment, 105.83 as MonthPayment
+
+
+
+select	'8037988912' as AppNum, 'ABF193699' as SomeKey, @EmplId_Tawny, 'Reed' as LastName, 'Earl' as FirstName,
+		'900 Betsy Dr' as Address, 'Columbia' as City, 'SC' as State, '29210-7804' as Zip,
+		'8037988912' as Phone, '' as Phone2, 'reed_earl@bellsouth.net' as Email,
+		'1G2ZH361194107134' as Vin, 
+
+select * from QSM.CarData.Car where Vin = '1G2ZH361194107134'
+select * from QSM.CarData.Car where Vin = 'KNDMB233786198405'
+
+
+update 
+
+*/
+
+
+
+
 
 -- select * from Policy.Policy
 /*
@@ -1838,12 +2026,10 @@ where Payday = 'Y'
 and Dt = '2015-04-17'
 */
 
-
-
 --*****************************
 -- Clean Up
 --*****************************
-DROP table [dbo].[Tmp];
+DROP TABLE [dbo].[Tmp];
 GO
 
 
@@ -1854,58 +2040,46 @@ GO
 -- select * from Contract.FinanceTerm
 
 
-
-USE [QSM]
-GO
-
-/****** Object:  StoredProcedure [dbo].[up_AddDNC_NewData]    Script Date: 5/29/2015 9:09:08 PM ******/
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
-
-CREATE PROC [dbo].[up_AddDNC_NewData]
-AS
-
-CREATE TABLE #tmp
-(
-	Phone	char(10)		NOT NULL UNIQUE,
-	DispCd	char(4)			NULL,
-	CallTm	smalldatetime	NULL
-);
-
-insert #tmp ( Phone, CallTm )
-select Phone_number, max(cast(last_local_call_time as smalldatetime)) as CallTm
-from [CarData].[CarData_2015_05_May_01]
-where Status in ('DNC','NI','NOC','WN')
-  and Phone_number <> '0000000000'
-  and Phone_number like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-group by phone_number
-
-update #tmp
-set DispCd = x.status
-from tmp_t t,  [CarData].[CarData_2015_05_May_01] x
-where t.Phone = x.phone_number
-  and t.CallTm = x.CallTm
-
-delete #tmp
-where phone in (select Phone from [PrivateReserve].[DNC].[DNC]);
-
--- select count(*) from #tmp;
-
-insert [PrivateReserve].[DNC].[DNC] (Phone, DispCd, CallTm)
-select Phone, DispCd, CallTm
-from #tmp
-where phone not in (select Phone from [PrivateReserve].[DNC].[DNC]);
-
-update [CarData].[Car] set Exclude = 'Y'
-where Exclude = 'N'
-  and Phone in (select Phone from [PrivateReserve].[DNC].[DNC]);
-GO
-
-
 --**************************************************
 -- STORED PROCS
 --**************************************************
+
+
+--**************************************************
+-- Functions
+--**************************************************
+IF OBJECT_ID(N'udf_TitleCase') IS NOT NULL
+	DROP FUNCTION dbo.udf_TitleCase;
+GO
+
+CREATE  FUNCTION [dbo].[udf_TitleCase] (@InputString varchar(4000) )
+RETURNS VARCHAR(4000)
+AS
+BEGIN
+DECLARE @Index          INT
+DECLARE @Char           CHAR(1)
+DECLARE @OutputString   VARCHAR(255)
+
+SET @OutputString = LOWER(@InputString)
+SET @Index = 2
+SET @OutputString =
+
+STUFF(@OutputString, 1, 1,UPPER(SUBSTRING(@InputString,1,1)))
+
+WHILE @Index <= LEN(@InputString)
+BEGIN
+	SET @Char = SUBSTRING(@InputString, @Index, 1)
+
+	IF @Char IN (' ', ';', ':', '!', '?', ',', '.', '_', '-', '/', '&','''', '(')
+		IF @Index + 1 <= LEN(@InputString)
+		BEGIN
+			IF @Char != '''' OR	UPPER(SUBSTRING(@InputString, @Index + 1, 1)) != 'S'
+			SET @OutputString = STUFF(@OutputString, @Index + 1, 1,UPPER(SUBSTRING(@InputString, @Index + 1, 1)))
+		END
+
+	SET @Index = @Index + 1
+END
+RETURN ISNULL(@OutputString,'')
+END
+GO
+
