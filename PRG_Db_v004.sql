@@ -180,6 +180,45 @@ GO
 sp_bindefault '[Legend].[Unknown]', '[Legend].[YesNoUnknown]'; 
 GO
 
+
+--**************************************************
+-- Functions
+--**************************************************
+IF OBJECT_ID(N'udf_TitleCase') IS NOT NULL
+	DROP FUNCTION dbo.udf_TitleCase;
+GO
+
+CREATE  FUNCTION [dbo].[udf_TitleCase] (@InputString varchar(4000) )
+RETURNS VARCHAR(4000)
+AS
+BEGIN
+DECLARE @Index          INT
+DECLARE @Char           CHAR(1)
+DECLARE @OutputString   VARCHAR(255)
+
+SET @OutputString = LOWER(@InputString)
+SET @Index = 2
+SET @OutputString =
+
+STUFF(@OutputString, 1, 1,UPPER(SUBSTRING(@InputString,1,1)))
+
+WHILE @Index <= LEN(@InputString)
+BEGIN
+	SET @Char = SUBSTRING(@InputString, @Index, 1)
+
+	IF @Char IN (' ', ';', ':', '!', '?', ',', '.', '_', '-', '/', '&','''', '(')
+		IF @Index + 1 <= LEN(@InputString)
+		BEGIN
+			IF @Char != '''' OR	UPPER(SUBSTRING(@InputString, @Index + 1, 1)) != 'S'
+			SET @OutputString = STUFF(@OutputString, @Index + 1, 1,UPPER(SUBSTRING(@InputString, @Index + 1, 1)))
+		END
+
+	SET @Index = @Index + 1
+END
+RETURN ISNULL(@OutputString,'')
+END
+GO
+
 ---------------------------------------
 --
 -----------------------------------------
@@ -735,7 +774,8 @@ SELECT 17, 0,		'Admins',				'Asset',	@Day1,	NULL UNION
 SELECT 18, 17,		'American Auto Shield',	'Asset',	@Day1,	NULL UNION
 SELECT 19, 17,		'Royal',				'Asset',	@Day1,	NULL UNION
 SELECT 20, 17,		'Sentinel',				'Asset',	@Day1,	NULL UNION
-SELECT 21, 17,		'Sun Path',				'Asset',	@Day1,	NULL
+SELECT 21, 17,		'Sun Path',				'Asset',	@Day1,	NULL UNION
+SELECT 22, 17,		'Omega',				'Asset',	@Day1,	NULL
 
 SET IDENTITY_INSERT [Acct].[Acct] OFF;
 
@@ -1166,59 +1206,60 @@ GO
 
 CREATE TABLE [Call].[Disp]
 (
-	DispCd		varchar(6)		NOT NULL	UNIQUE,
-	Definition	varchar(30)		NOT NULL,
+	DispCd		varchar(6)				NOT NULL	UNIQUE,
+	Definition	varchar(30)				NOT NULL,
+	SaysHello	[Legend].[YesNo]		NOT NULL
 PRIMARY KEY (DispCd)
 )
 GO
 
-INSERT [Call].[Disp] (DispCd, Definition)
-SELECT 'NEW','New Lead' UNION
-SELECT 'QUEUE','Lead To Be Called' UNION
-SELECT 'INCALL','Lead Being Called' UNION
-SELECT 'DROP','Agent Not Available' UNION
-SELECT 'XDROP','Agent Not Available IN' UNION
-SELECT 'NA','No Answer AutoDial' UNION
-SELECT 'CALLBK','Call Back' UNION
-SELECT 'CBHOLD','Call Back Hold' UNION
-SELECT 'AA','Answering Machine Auto' UNION
-SELECT 'AM','Answering Machine SentToMesg' UNION
-SELECT 'AL','Answering Machine Msg Played' UNION
-SELECT 'AFAX','Fax Machine Auto' UNION
-SELECT 'AB','Busy Auto' UNION
-SELECT 'B','Busy' UNION
-SELECT 'DC','Disconnected Number' UNION
-SELECT 'ADC','Disconnected Number Auto' UNION
-SELECT 'DNC','DO NOT CALL' UNION
-SELECT 'DNCL','DO NOT CALL Hopper Sys Match' UNION
-SELECT 'DNCC','DO NOT CALL Hopper Camp Match' UNION
-SELECT 'N','No Answer' UNION
-SELECT 'NI','Not Interested' UNION
-SELECT 'NP','No Pitch No Price' UNION
-SELECT 'PU','Call Picked Up' UNION
-SELECT 'PM','Played Message' UNION
-SELECT 'XFER','Call Transferred' UNION
-SELECT 'ERI','Agent Error' UNION
-SELECT 'SVYEXT','Survey sent to Extension' UNION
-SELECT 'SVYVM','Survey sent to Voicemail' UNION
-SELECT 'SVYHU','Survey Hungup' UNION
-SELECT 'SVYREC','Survey sent to Record' UNION
-SELECT 'QVMAIL','Queue Abandon Voicemail Left' UNION
-SELECT 'RQXFER','Re-Queue' UNION
-SELECT 'TIMEOT','Inbound Queue Timeout Drop' UNION
-SELECT 'AFTHRS','Inbound After Hours Drop' UNION
-SELECT 'NANQUE','Inbound No Agent No Queue Drop' UNION
-SELECT 'PDROP','Outbound Pre-Routing Drop' UNION
-SELECT 'IVRXFR','Outbound drop to Call Menu' UNION
-SELECT 'SVYCLM','Survey sent to Call Menu' UNION
-SELECT 'MLINAT','Multi-Lead auto-alt set inactv' UNION
-SELECT 'MAXCAL','Inbound Max Calls Drop' UNION
-SELECT 'LRERR','Outbound Local Channel Res Err' UNION
-SELECT 'QCFAIL','QC_FAIL_CALLBK' UNION
-SELECT 'ADCT','Disconnected Number Temporary' UNION
-SELECT 'LSMERG','Agent lead search old lead mrg' UNION
-SELECT 'NOC','' UNION
-SELECT 'WN','Wrong Number'
+INSERT [Call].[Disp] (DispCd, Definition, SaysHello)
+SELECT 'NEW','New Lead', 'N' UNION
+SELECT 'QUEUE','Lead To Be Called', 'N' UNION
+SELECT 'INCALL','Lead Being Called', 'N' UNION
+SELECT 'DROP','Agent Not Available', 'N' UNION
+SELECT 'XDROP','Agent Not Available IN', 'N' UNION
+SELECT 'NA','No Answer AutoDial', 'N' UNION
+SELECT 'CALLBK','Call Back', 'Y' UNION
+SELECT 'CBHOLD','Call Back Hold', 'Y' UNION
+SELECT 'AA','Answering Machine Auto', 'N' UNION
+SELECT 'AM','Answering Machine SentToMesg', 'N' UNION
+SELECT 'AL','Answering Machine Msg Played', 'N' UNION
+SELECT 'AFAX','Fax Machine Auto', 'N' UNION
+SELECT 'AB','Busy Auto', 'N' UNION
+SELECT 'B','Busy', 'N' UNION
+SELECT 'DC','Disconnected Number', 'N' UNION
+SELECT 'ADC','Disconnected Number Auto', 'N' UNION
+SELECT 'DNC','DO NOT CALL', 'Y' UNION
+SELECT 'DNCL','DO NOT CALL Hopper Sys Match', 'N' UNION
+SELECT 'DNCC','DO NOT CALL Hopper Camp Match', 'N' UNION
+SELECT 'N','No Answer', 'N' UNION
+SELECT 'NI','Not Interested', 'Y' UNION
+SELECT 'NP','No Pitch No Price', 'N' UNION
+SELECT 'PU','Call Picked Up', 'N' UNION
+SELECT 'PM','Played Message', 'N' UNION
+SELECT 'XFER','Call Transferred', 'Y' UNION
+SELECT 'ERI','Agent Error', 'N' UNION
+SELECT 'SVYEXT','Survey sent to Extension', 'N' UNION
+SELECT 'SVYVM','Survey sent to Voicemail', 'N' UNION
+SELECT 'SVYHU','Survey Hungup', 'N' UNION
+SELECT 'SVYREC','Survey sent to Record', 'N' UNION
+SELECT 'QVMAIL','Queue Abandon Voicemail Left', 'N' UNION
+SELECT 'RQXFER','Re-Queue', 'N' UNION
+SELECT 'TIMEOT','Inbound Queue Timeout Drop', 'N' UNION
+SELECT 'AFTHRS','Inbound After Hours Drop', 'N' UNION
+SELECT 'NANQUE','Inbound No Agent No Queue Drop', 'N' UNION
+SELECT 'PDROP','Outbound Pre-Routing Drop', 'N' UNION
+SELECT 'IVRXFR','Outbound drop to Call Menu', 'N' UNION
+SELECT 'SVYCLM','Survey sent to Call Menu', 'N' UNION
+SELECT 'MLINAT','Multi-Lead auto-alt set inactv', 'N' UNION
+SELECT 'MAXCAL','Inbound Max Calls Drop', 'N' UNION
+SELECT 'LRERR','Outbound Local Channel Res Err', 'N' UNION
+SELECT 'QCFAIL','QC_FAIL_CALLBK', 'N' UNION
+SELECT 'ADCT','Disconnected Number Temporary', 'N' UNION
+SELECT 'LSMERG','Agent lead search old lead mrg', 'N' UNION
+SELECT 'NOC','', 'N' UNION
+SELECT 'WN','Wrong Number', 'Y'
 ;
 GO
 
@@ -1373,19 +1414,21 @@ GO
 -----------------------------------------
 CREATE TABLE [Contract].[Admin]
 (
-	[AdminId]			[int]				NOT NULL	IDENTITY(1,1),
-	[Name]				[varchar](30)		NOT NULL	UNIQUE,
+-- 	[AdminId]			[int]				NOT NULL	IDENTITY(1,1),
+	[Admin]				[varchar](10)		NOT NULL	UNIQUE,
+	[Name]				[varchar](30)		NOT NULL,
 	[AcctId]			[int]				NOT NULL
-PRIMARY KEY ([AdminId]),
+PRIMARY KEY ([Admin]),
 FOREIGN KEY ([AcctId]) REFERENCES [Acct].[Acct] ( AcctId )
 );
 GO
 
-INSERT [Contract].[Admin] ( Name, AcctId )
-SELECT 'American Auto Shield', 18 UNION
-SELECT 'Royal', 19 UNION
-SELECT 'Sentinel', 20  UNION
-SELECT 'SunPath', 21
+INSERT [Contract].[Admin] (Admin, Name, AcctId )
+SELECT 'AASB', 'American Auto Shield', 18 UNION
+SELECT 'ROYSHD', 'Royal Shield', 19 UNION
+SELECT 'ROYSEN', 'Sentinel', 20  UNION
+SELECT 'SUNPATH', 'SunPath', 21 UNION
+SELECT 'OMEGA', 'Omega', 22
 ;
 GO
 
@@ -1506,7 +1549,7 @@ CREATE TABLE [Car].[Contract]
 	[Term]					[varchar](20)		NULL,		-- likely to be shorter as also a code like 72/70
 	[Deductable]			[money]				NULL,
 	[Class]					[varchar](10)		NULL,		-- also some kind of code
-	[AdminId]				[int]				NOT NULL,	-- SunPath
+	[Admin]					[varchar](10)		NOT NULL,	-- SunPath
 	[CoverageType]			[varchar](30)		NOT NULL,	-- like some set of values need to discover ('Exclusion')
 	[FinanceId]				[int]				NOT NULL,	-- omnisure
 	[ExpDt]					[smalldatetime]		NOT NULL,
@@ -1525,7 +1568,7 @@ CREATE TABLE [Car].[Contract]
 	[CancelDt]				[smalldatetime]		NULL,
 	[CancelReturnAmt]		[money]				NULL,
 PRIMARY KEY ([ContractId]),
-FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId),
+FOREIGN KEY ([Admin]) REFERENCES [Contract].[Admin] (Admin),
 FOREIGN KEY ([EmplId_Open]) REFERENCES [Employee].[Employee] (EmplId),
 FOREIGN KEY ([EmplId_Sale]) REFERENCES [Employee].[Employee] (EmplId),
 FOREIGN KEY ([EmplId_TO]) REFERENCES [Employee].[Employee] (EmplId),
@@ -1591,12 +1634,12 @@ GO
 CREATE TABLE [Contract].[AdminAdvance]
 (
 	[AdvanceId]				[int]				NOT NULL	IDENTITY(1,1),
-	[AdminId]				[int]				NOT NULL,
+	[Admin]					[varchar](10)		NOT NULL,
 	[WeekNum]				[smallint]			NOT NULL,
 	[BeginDt]				[smalldatetime]		NOT NULL,
 	[EndDt]					[smalldatetime]		NOT NULL,
 PRIMARY KEY (AdvanceId),
-FOREIGN KEY ([AdminId]) REFERENCES [Contract].[Admin] (AdminId),
+FOREIGN KEY ([Admin]) REFERENCES [Contract].[Admin] (Admin),
 FOREIGN KEY ([BeginDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([EndDt]) REFERENCES [Legend].[Day] (Dt),
 );
@@ -1968,7 +2011,7 @@ select * from [PRG].[Contract].[Finance]
 
 declare @FinanceId_Omni int = (select FinanceId from [PRG].[Contract].[Finance] where Name = 'OmniSure');
 
-declare @AdminId_SunPath int = (select AdminId from [PRG].[Contract].[Admin] where Name = 'Sunpath');
+declare @Admin_SunPath varchar(10) = (select Admin from [PRG].[Contract].[Admin] where Name = 'Sunpath');
 -- select @AdminId;
 declare @EmplId_Open int = 1;
 declare @EmplId_TO int = NULL;
@@ -2044,42 +2087,4 @@ GO
 -- STORED PROCS
 --**************************************************
 
-
---**************************************************
--- Functions
---**************************************************
-IF OBJECT_ID(N'udf_TitleCase') IS NOT NULL
-	DROP FUNCTION dbo.udf_TitleCase;
-GO
-
-CREATE  FUNCTION [dbo].[udf_TitleCase] (@InputString varchar(4000) )
-RETURNS VARCHAR(4000)
-AS
-BEGIN
-DECLARE @Index          INT
-DECLARE @Char           CHAR(1)
-DECLARE @OutputString   VARCHAR(255)
-
-SET @OutputString = LOWER(@InputString)
-SET @Index = 2
-SET @OutputString =
-
-STUFF(@OutputString, 1, 1,UPPER(SUBSTRING(@InputString,1,1)))
-
-WHILE @Index <= LEN(@InputString)
-BEGIN
-	SET @Char = SUBSTRING(@InputString, @Index, 1)
-
-	IF @Char IN (' ', ';', ':', '!', '?', ',', '.', '_', '-', '/', '&','''', '(')
-		IF @Index + 1 <= LEN(@InputString)
-		BEGIN
-			IF @Char != '''' OR	UPPER(SUBSTRING(@InputString, @Index + 1, 1)) != 'S'
-			SET @OutputString = STUFF(@OutputString, @Index + 1, 1,UPPER(SUBSTRING(@InputString, @Index + 1, 1)))
-		END
-
-	SET @Index = @Index + 1
-END
-RETURN ISNULL(@OutputString,'')
-END
-GO
 
