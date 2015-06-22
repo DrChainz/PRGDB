@@ -730,8 +730,10 @@ CREATE TABLE [Acct].[Acct]
 (
 	AcctId			[int]				NOT NULL IDENTITY (-1,1),
 	ParentAcctId	[int]				NULL,
-	Name			varchar(50)			NOT NULL,
+	AcctNum			[varchar](20)		NULL,
+	Name			[varchar](50)		NOT NULL,
 	Shares			[int]				NULL,
+	AppNum			[varchar](20)		NULL,						-- probably oughta setup referncial integrity against Contract
 	Type			[Acct].[Type]		NOT NULL,
 	CreateDt		[smalldatetime]		NOT NULL,
 	IsClosed		[Legend].[YesNo]	NOT NULL,
@@ -752,30 +754,47 @@ DECLARE @Day0	smalldatetime	= '2015-02-17';
 DECLARE @Day1	smalldatetime	= '2015-03-15';
 DECLARE @Day2	smalldatetime	= '2015-05-1';
 
-INSERT [Acct].[Acct] ( AcctId, ParentAcctId, Name, Type, CreateDt, Shares )
-SELECT -1, NULL,	'Cash',					'Asset',	@Day1,	NULL UNION
-SELECT 0, -1,		'P Reserve',			'Asset',	@Day1,	NULL UNION
-SELECT 1, NULL,		'P',					'Equity',	@Day1,	700000 UNION
-SELECT 2, NULL,		'Tani',					'Equity',	@Day1,	100000 UNION
-SELECT 3, NULL,		'Chainz',				'Equity',	@Day1,	100000 UNION
-SELECT 4, NULL,		'Marco',				'Equity',	@Day1,	100000 UNION
-SELECT 5, NULL,		'Employee Expense',		'Liability',@Day1,	NULL UNION
-SELECT 7, NULL,		'TransNational',		'Asset',	@Day1,	NULL UNION
-SELECT 8, NULL,		'OmniSure',				'Asset',	@Day1,	NULL UNION
-SELECT 9, NULL,		'Q Reserve',			'Liability',@Day1,	NULL UNION
-SELECT 10, 9,		'Dan',					'Liability',@Day1,	NULL UNION
-SELECT 11, NULL,	'VOIP Minutes',			'Liability',@Day1,	NULL UNION
-SELECT 12, 11,		'Alcazarnet',			'Liability',@Day1,	NULL UNION
-SELECT 13, 11,		'Interstate',			'Liability',@Day1,	NULL UNION
-SELECT 14, NULL,	'Internet - Cox',		'Liability',@Day1,	NULL UNION
-SELECT 15, 9,		'GuzJr',				'Liability',@Day1,	NULL UNION
-SELECT 16, 9,		'Ramos',				'Liability',@Day2,	NULL UNION 
-SELECT 17, 0,		'Admins',				'Asset',	@Day1,	NULL UNION
-SELECT 18, 17,		'American Auto Shield',	'Asset',	@Day1,	NULL UNION
-SELECT 19, 17,		'Royal',				'Asset',	@Day1,	NULL UNION
-SELECT 20, 17,		'Sentinel',				'Asset',	@Day1,	NULL UNION
-SELECT 21, 17,		'Sun Path',				'Asset',	@Day1,	NULL UNION
-SELECT 22, 17,		'Omega',				'Asset',	@Day1,	NULL
+INSERT [Acct].[Acct] ( AcctId, ParentAcctId, AcctNum, Name, Type, CreateDt, Shares, AppNum )
+SELECT -1, NULL,	'A00280',		'Cash - ACH',	'Asset',	@Day1,	NULL, NULL UNION
+SELECT 0, -1,		'PR',			'P Reserve',	'Asset',	@Day1,	NULL, NULL UNION
+
+SELECT 1, NULL,		'P',			'P',			'Equity',	@Day1,	800000, NULL UNION
+SELECT 2, NULL,		'CZ',			'Chainz',		'Equity',	@Day1,	100000, NULL UNION
+SELECT 3, NULL,		'MZ',			'Marco',		'Equity',	@Day1,	100000, NULL UNION
+
+SELECT 5, NULL,		'Employee',		'Employee Expense',		'Liability',@Day1,	NULL, NULL UNION
+SELECT 7, NULL,		'TN',			'TransNational',		'Asset',	@Day1,	NULL, NULL UNION
+SELECT 8, NULL,		'OMNI',			'OmniSure - Reserve',	'Asset',	@Day1,	NULL, NULL UNION
+
+SELECT 9, NULL,		'QR',			'Q Reserve',			'Liability',@Day1,	NULL, NULL UNION
+SELECT 10, 9,		'dans',			'Dan',					'Liability',@Day1,	NULL, NULL UNION
+SELECT 11, NULL,	'VOIP',			'VOIP Minutes',			'Liability',@Day1,	NULL, NULL UNION
+SELECT 12, 11,		'Alcazarnet',	'Alcazarnet',			'Liability',@Day1,	NULL, NULL UNION
+SELECT 13, 11,		'Interstate',	'Interstate',			'Liability',@Day1,	NULL, NULL UNION
+SELECT 14, NULL,	'Internet',		'Internet - Cox',		'Liability',@Day1,	NULL, NULL UNION
+SELECT 15, 9,		'Mel',			'Mel',					'Liability',@Day1,	NULL, NULL UNION
+SELECT 16, 9,		'Ramos',		'Ramos',				'Liability',@Day2,	NULL, NULL UNION 
+
+SELECT 17, 0,		'Admins',		'Admins',				'Asset',	@Day1,	NULL, NULL UNION
+SELECT 18, 17,		'G00021',		'American Auto Shield',	'Asset',	@Day1,	NULL, NULL UNION
+
+SELECT 19, 17,		'G00003',		'Royal Administration Services',	'Asset',	@Day1,	NULL, NULL UNION
+SELECT 20, 17,		'',				'Sentinel',							'Asset',	@Day1,	NULL, NULL UNION
+SELECT 21, 17,		'G00039',		'SunPath Ltd.',			'Asset',	@Day1,	NULL, NULL UNION
+SELECT 22, 17,		'',				'Omega',				'Asset',	@Day1,	NULL, NULL UNION
+SELECT 23, 17,		'G00041',		'Ensurety Inc.',		'Asset',	@Day1,	NULL, NULL UNION
+
+SELECT 24, 0,		'CUST',			'Customer Accounts'		'Asset',	@Day1,	NULL, NULL UNION
+
+SELECT 25, 24,		'1043-4725099',	'NANCY GUENTHER - RCW001001' 'Asset',	@Day1, NULL, '9737447054' -- outta be date finance company is paid and does thing
+
+
+-- A00280 - Auto Protection Services
+-- G00003 - Royal Administration Services
+-- G00021 - American Auto Shield
+-- G00039 - SunPath Ltd.
+-- G00041 - Ensurety Inc.
+
 
 SET IDENTITY_INSERT [Acct].[Acct] OFF;
 
