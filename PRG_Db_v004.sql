@@ -869,9 +869,9 @@ SELECT 21, 17,		'G00039',		'SunPath Ltd.',			'Asset',	@Day1,	NULL, NULL UNION
 SELECT 22, 17,		'',				'Omega',				'Asset',	@Day1,	NULL, NULL UNION
 SELECT 23, 17,		'G00041',		'Ensurety Inc.',		'Asset',	@Day1,	NULL, NULL UNION
 
-SELECT 24, 0,		'CUST',			'Customer Accounts'		'Asset',	@Day1,	NULL, NULL UNION
+SELECT 24, 0,		'CUST',			'Customer Accounts',		'Asset',	@Day1,	NULL, NULL UNION
 
-SELECT 25, 24,		'1043-4725099',	'NANCY GUENTHER - RCW001001' 'Asset',	@Day1, NULL, '9737447054' -- outta be date finance company is paid and does thing
+SELECT 25, 24,		'1043-4725099',	'NANCY GUENTHER - RCW001001', 'Asset',	@Day1, NULL, '9737447054' -- outta be date finance company is paid and does thing
 
 
 -- A00280 - Auto Protection Services
@@ -912,7 +912,7 @@ CREATE TABLE [Acct].[Tx]
 	[UsrId]				[int]				NOT NULL,
 	[JournalId]			[int]				NULL,			-- when assigned to a journal entry
 PRIMARY KEY ([TxId]),
-FOREIGN KEY ([UsrId]) REFERENCES [Sys].[Usr] ( UsrId ),
+FOREIGN KEY ([UsrId]) REFERENCES [Core].[Usr] ( UsrId ),
 FOREIGN KEY ([JournalId]) REFERENCES [Acct].[Journal] ( JournalId )
 );
 
@@ -969,7 +969,7 @@ CREATE TRIGGER LedgerDelete
 ON [Acct].[Ledger]
 FOR DELETE
 AS
-	INSERT [Acct].[LedgerChange] (DbAction, TxId, Dt, AcctId, Debit, Credit, Currency)
+	INSERT [Acct].[LedgerChange] (DbAction, LedgerId, TxId, Dt, AcctId, Debit, Credit, Currency)
 	SELECT 'DELETE', LedgerId, TxId, GETDATE(), AcctId, Debit, Credit, Currency
 	FROM deleted;
 GO
@@ -1381,13 +1381,13 @@ GO
 --***************************************
 --
 --***************************************
-CREATE Schema [DNC];
+CREATE Schema [Dnc];
 GO
 
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [DNC].[AreaCd]
+CREATE TABLE [Dnc].[AreaCd]
 (
 	[AreaCd]	[Legend].[AreaCd] NOT NULL,
 PRIMARY KEY ([AreaCd])
@@ -1397,15 +1397,15 @@ PRIMARY KEY ([AreaCd])
 ------------------------------------------
 -- move area codes we already purchased
 ------------------------------------------
-INSERT [DNC].[AreaCd] (AreaCd)
+INSERT [Dnc].[AreaCd] (AreaCd)
 SELECT AreaCd
-FROM [PrivateReserve].[DNC].[AreaCd]
+FROM [PrivateReserve].[Dnc].[AreaCd]
  GO
 
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [DNC].[DNC]
+CREATE TABLE [Dnc].[Dnc]
 (
 	[Phone]		[Legend].[Phone]	NOT NULL UNIQUE,
 	[DispCd]	[varchar](6)		NOT NULL,
@@ -1420,14 +1420,14 @@ FOREIGN KEY ([DispCd]) REFERENCES [Call].[Disp](DispCd)
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
-	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
+	INSERT [Dnc].[Dnc] (Phone, DispCd, CallTm)
 	SELECT Phone, DispCd, CallTm
-	FROM [PrivateReserve].[DNC].[DNC];
+	FROM [PrivateReserve].[Dnc].[Dnc];
 
 	-- Unsure why this is here - do some investigation as think depreciated
-	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
+	INSERT [Dnc].[Dnc] (Phone, DispCd, CallTm)
 	SELECT DISTINCT Phone, 'DNC', GETDATE()
-	FROM [PrivateReserve].[CarData].[DNC_Preexisting]
+	FROM [PrivateReserve].[CarData].[Dnc_Preexisting]
 	WHERE Phone NOT IN (SELECT Phone FROM [DNC].[DNC])
 	  AND Phone LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
 END
@@ -1436,7 +1436,7 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [DNC].[DNC_Log]
+CREATE TABLE [Dnc].[DNC_Log]
 (
 	[Dt]		[smalldatetime] NOT NULL,
 	[Cnt]		[int] NOT NULL,
@@ -1452,7 +1452,7 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [DNC].[WirelessBlocks]
+CREATE TABLE [Dnc].[WirelessBlocks]
 (
 	[NPA] [char](3) NOT NULL,
 	[NXX] [char](3) NOT NULL,
@@ -1465,7 +1465,7 @@ CREATE TABLE [DNC].[WirelessBlocks]
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [DNC].[WirelessToLandline]
+CREATE TABLE [Dnc].[WirelessToLandline]
 (
 	[Phone]		[Legend].[Phone] NOT NULL	UNIQUE
 ) ON [PRIMARY]
@@ -1475,7 +1475,7 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [DNC].[LandlineToWireless]
+CREATE TABLE [Dnc].[LandlineToWireless]
 (
 	[Phone]		[Legend].[Phone] NOT NULL	UNIQUE
 ) ON [PRIMARY]
@@ -1501,7 +1501,7 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [DNC].[Wireless_LoadLog]
+CREATE TABLE [Dnc].[Wireless_LoadLog]
 (
 	[Dt]					[smalldatetime] NOT NULL UNIQUE,
 	[WirelessBlockCnt]		[int]			NOT NULL,
@@ -1511,9 +1511,9 @@ FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt)
 ) ON [PRIMARY]
 GO
 
-INSERT [DNC].[Wireless_LoadLog] (Dt, WirelessBlockCnt, WirelessToLandlineCnt, LandlineToWirelessCnt )
+INSERT [Dnc].[Wireless_LoadLog] (Dt, WirelessBlockCnt, WirelessToLandlineCnt, LandlineToWirelessCnt )
 SELECT LoadDt, WirelessCnt, WirelessToLandlineCnt, LandlineToWirelessCnt
-FROM [PrivateReserve].[DNC].[Wireless_LoadLog];
+FROM [PrivateReserve].[Dnc].[Wireless_LoadLog];
 GO
 
 
@@ -1949,7 +1949,7 @@ CREATE TABLE [Contract].[EmployeePay]
 FOREIGN KEY ([ContractId]) REFERENCES [Car].[Contract] (ContractId),
 FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] (EmplId),
 FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
-FOREIGN KEY ([TransId]) REFERENCES [Acct].[Transaction] (TransId)
+FOREIGN KEY ([TransId]) REFERENCES [Acct].[Tx] (TxId)
 );
 
 CREATE UNIQUE INDEX PK_ContractEmployeeSaleRole ON [Contract].[EmployeePay] ( ContractId, SaleRole );
