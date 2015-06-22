@@ -532,6 +532,91 @@ GO
 --***************************************
 --
 --***************************************
+CREATE Schema [Core];
+GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Core].[Permission]
+(
+	[PermId]			[int]			NOT NULL	IDENTITY(0,1),
+	[Permission]		[varchar](20)	NOT NULL	UNIQUE,
+PRIMARY KEY ([PermId])
+);
+
+SET IDENTITY_INSERT [Core].[Permission] ON;
+INSERT [Core].[Permission] (PermId, Permission)
+SELECT 0, 'Permission' UNION
+SELECT 1, 'Role' UNION
+SELECT 2, 'Usr';
+SET IDENTITY_INSERT [Core].[Permission] OFF;
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Core].[Role]
+(
+	[RoleId]			[int]			NOT NULL	IDENTITY(0,1),
+	[Role]				[varchar](30)	NOT NULL	UNIQUE,
+PRIMARY KEY ([RoleId])
+) ON [PRIMARY]
+GO
+
+SET IDENTITY_INSERT [Core].[Role] ON;
+INSERT [Core].[Role] (RoleId, Role)
+SELECT 0, 'root' UNION
+SELECT 1, 'Admin' UNION
+SELECT 2, 'Manager' UNION
+SELECT 3, 'Closer';
+SET IDENTITY_INSERT [Core].[Role] OFF;
+GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Core].[RolePermission]
+(
+	[RoleId]			[int]			NOT NULL,
+	[PermId]			[int]			NOT NULL
+);
+
+CREATE UNIQUE INDEX PK_RolePermission ON [Core].[RolePermission] (RoleId, PermId);
+
+INSERT [Core].[RolePermission] (RoleId, PermId)
+SELECT 0, 0 UNION
+SELECT 0, 1 UNION
+SELECT 0, 2;
+GO
+
+---------------------------------------
+--
+-----------------------------------------
+CREATE TABLE [Core].[Usr]
+(
+	[UsrId]				[int]				NOT NULL	IDENTITY(0,1),
+	[Usr]				[varchar](10)		NOT NULL	UNIQUE,
+	[RoleId]			[int]				NOT NULL,
+	[Disabled]			[Legend].[YesNo]	NOT NULL,
+PRIMARY KEY ([UsrId]),
+FOREIGN KEY ([RoleId]) REFERENCES [Core].[Role] (RoleId)
+);
+
+SET IDENTITY_INSERT [Core].[Usr] ON;
+INSERT [Core].[Usr] (UsrId, Usr, RoleId)
+SELECT 0, 'root', 0	UNION
+SELECT 1, 'Matt', 1 UNION
+SELECT 2, 'PJ', 1 UNION
+SELECT 3, 'Katelynn', 2 UNION
+SELECT 4, 'Dan', 3 UNION
+SELECT 5, 'Ramos', 3;
+SET IDENTITY_INSERT [Core].[Usr] OFF;
+
+GO
+
+--***************************************
+--
+--***************************************
 CREATE Schema [Employee];
 GO
 
@@ -820,62 +905,72 @@ FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] ( EmplId )
 -----------------------------------------------
 --
 -----------------------------------------------
-CREATE TABLE [Acct].[Transaction]
+CREATE TABLE [Acct].[Tx]
 (
-	[TransId]			[int]				NOT NULL IDENTITY (1,1),
-	[Dt]				[smalldatetime]		NOT NULL,
-	[DebitAcctId]		[int]				NOT NULL,
-	[CreditAcctId]		[int]				NOT NULL,
+	[TxId]				[int]				NOT NULL IDENTITY (1,1),
+	[TxDt]				[date]				NOT NULL,
+	[UsrId]				[int]				NOT NULL,
+	[JournalId]			[int]				NULL,			-- when assigned to a journal entry
+PRIMARY KEY ([TxId]),
+FOREIGN KEY ([UsrId]) REFERENCES [Sys].[Usr] ( UsrId ),
+FOREIGN KEY ([JournalId]) REFERENCES [Acct].[Journal] ( JournalId )
+);
+
+
+
+-----------------------------------------------
+--
+-----------------------------------------------
+CREATE TABLE [Acct].[Ledger]
+(
+	[LedgerId]			[int]				NOT NULL IDENTITY (1,1),
+	[TxId]				[int]				NOT NULL,
+	[AcctId]			[int]				NOT NULL,
 	[Debit]				[money]				NOT NULL,
 	[Credit]			[money]				NOT NULL,
 	[Currency]			[Acct].[Currency]	NOT NULL,
-	[JournalId]			[int]				NULL,			-- when assigned to a journal entry
-PRIMARY KEY ([TransId]),
-FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([DebitAcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
-FOREIGN KEY ([CreditAcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
+PRIMARY KEY ([LedgerId]),
+FOREIGN KEY ([TxId]) REFERENCES [Acct].[Tx] ( TxId ),
+FOREIGN KEY ([AcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
 FOREIGN KEY ([Currency]) REFERENCES [Acct].[Currency] ( Currency ),
-FOREIGN KEY ([JournalId]) REFERENCES [Acct].[Journal] ( JournalId )
+
 );
 GO
 
 -----------------------------------------------
 --
 -----------------------------------------------
-CREATE TABLE [Acct].[TransactionChange]
+CREATE TABLE [Acct].[LedgerChange]
 (
 	[DbAction]			[Legend].[DbAction]	NOT NULL,
-	[TransId]			[int]				NOT NULL,
+	[LedgerId]			[int]				NOT NULL,
+	[TxId]				[int]				NOT NULL,
 	[Dt]				[smalldatetime]		NOT NULL,
-	[DebitAcctId]		[int]				NOT NULL,
-	[CreditAcctId]		[int]				NOT NULL,
+	[AcctId]			[int]				NOT NULL,
 	[Debit]				[money]				NOT NULL,
 	[Credit]			[money]				NOT NULL,
 	[Currency]			[Acct].[Currency]	NOT NULL,
-	[JournalId]			[int]				NULL,			-- when assigned to a journal entry
 FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([DebitAcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
-FOREIGN KEY ([CreditAcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
-FOREIGN KEY ([Currency]) REFERENCES [Acct].[Currency] ( Currency ),
-FOREIGN KEY ([JournalId]) REFERENCES [Acct].[Journal] ( JournalId )
+FOREIGN KEY ([AcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
+FOREIGN KEY ([Currency]) REFERENCES [Acct].[Currency] ( Currency )
 );
 GO
 
-CREATE TRIGGER TransactionUpdate
-ON [Acct].[Transaction]
+CREATE TRIGGER LedgerUpdate
+ON [Acct].[Ledger]
 FOR UPDATE
 AS
-	INSERT [Acct].[TransactionChange] (DbAction, TransId, Dt, DebitAcctId, CreditAcctId, Debit, Credit, Currency, JournalId)
-	SELECT 'UPDATE', TransId, Dt, DebitAcctId, CreditAcctId, Debit, Credit, Currency, JournalId
+	INSERT [Acct].[LedgerChange] (DbAction, LedgerId, TxId, Dt, AcctId, Debit, Credit, Currency)
+	SELECT 'UPDATE', LedgerId, TxId, GETDATE(), AcctId, Debit, Credit, Currency
 	FROM inserted;
 GO
 
-CREATE TRIGGER TransactionDelete
-ON [Acct].[Transaction]
+CREATE TRIGGER LedgerDelete
+ON [Acct].[Ledger]
 FOR DELETE
 AS
-	INSERT [Acct].[TransactionChange] (DbAction, TransId, Dt, DebitAcctId, CreditAcctId, Debit, Credit, Currency, JournalId)
-	SELECT 'DELETE', TransId, Dt, DebitAcctId, CreditAcctId, Debit, Credit, Currency, JournalId
+	INSERT [Acct].[LedgerChange] (DbAction, TxId, Dt, AcctId, Debit, Credit, Currency)
+	SELECT 'DELETE', LedgerId, TxId, GETDATE(), AcctId, Debit, Credit, Currency
 	FROM deleted;
 GO
 
