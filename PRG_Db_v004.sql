@@ -1381,13 +1381,13 @@ GO
 --***************************************
 --
 --***************************************
-CREATE Schema [Dnc];
+CREATE Schema [DNC];
 GO
 
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Dnc].[AreaCd]
+CREATE TABLE [DNC].[AreaCd]
 (
 	[AreaCd]	[Legend].[AreaCd] NOT NULL,
 PRIMARY KEY ([AreaCd])
@@ -1397,7 +1397,7 @@ PRIMARY KEY ([AreaCd])
 ------------------------------------------
 -- move area codes we already purchased
 ------------------------------------------
-INSERT [Dnc].[AreaCd] (AreaCd)
+INSERT [DNC].[AreaCd] (AreaCd)
 SELECT AreaCd
 FROM [PrivateReserve].[Dnc].[AreaCd]
  GO
@@ -1405,7 +1405,7 @@ FROM [PrivateReserve].[Dnc].[AreaCd]
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Dnc].[Dnc]
+CREATE TABLE [DNC].[DNC]
 (
 	[Phone]		[Legend].[Phone]	NOT NULL UNIQUE,
 	[DispCd]	[varchar](6)		NOT NULL,
@@ -1420,12 +1420,12 @@ FOREIGN KEY ([DispCd]) REFERENCES [Call].[Disp](DispCd)
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
-	INSERT [Dnc].[Dnc] (Phone, DispCd, CallTm)
+	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
 	SELECT Phone, DispCd, CallTm
 	FROM [PrivateReserve].[Dnc].[Dnc];
 
 	-- Unsure why this is here - do some investigation as think depreciated
-	INSERT [Dnc].[Dnc] (Phone, DispCd, CallTm)
+	INSERT [DNC].[DNC] (Phone, DispCd, CallTm)
 	SELECT DISTINCT Phone, 'DNC', GETDATE()
 	FROM [PrivateReserve].[CarData].[Dnc_Preexisting]
 	WHERE Phone NOT IN (SELECT Phone FROM [DNC].[DNC])
@@ -1436,7 +1436,7 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Dnc].[DNC_Log]
+CREATE TABLE [DNC].[DNC_Log]
 (
 	[Dt]		[smalldatetime] NOT NULL,
 	[Cnt]		[int] NOT NULL,
@@ -1452,7 +1452,7 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Dnc].[WirelessBlocks]
+CREATE TABLE [DNC].[WirelessBlocks]
 (
 	[NPA] [char](3) NOT NULL,
 	[NXX] [char](3) NOT NULL,
@@ -1465,7 +1465,7 @@ CREATE TABLE [Dnc].[WirelessBlocks]
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Dnc].[WirelessToLandline]
+CREATE TABLE [DNC].[WirelessToLandline]
 (
 	[Phone]		[Legend].[Phone] NOT NULL	UNIQUE
 ) ON [PRIMARY]
@@ -1475,7 +1475,7 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Dnc].[LandlineToWireless]
+CREATE TABLE [DNC].[LandlineToWireless]
 (
 	[Phone]		[Legend].[Phone] NOT NULL	UNIQUE
 ) ON [PRIMARY]
@@ -1501,7 +1501,7 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Dnc].[Wireless_LoadLog]
+CREATE TABLE [DNC].[Wireless_LoadLog]
 (
 	[Dt]					[smalldatetime] NOT NULL UNIQUE,
 	[WirelessBlockCnt]		[int]			NOT NULL,
