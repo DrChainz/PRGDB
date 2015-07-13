@@ -617,75 +617,87 @@ GO
 --***************************************
 --
 --***************************************
-CREATE Schema [Employee];
+CREATE Schema [Volunteer];
 GO
 
-CREATE RULE [Employee].[SSN] 
+CREATE RULE [Volunteer].[SSN] 
 AS
 @SSN like '[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]'
 GO
 
-CREATE TYPE [Employee].[SSN] FROM [char](11) NOT NULL
+CREATE TYPE [Volunteer].[SSN] FROM [char](11) NOT NULL
 GO
 
-sp_bindrule '[Employee].[SSN]', '[Employee].[SSN]';
+sp_bindrule '[Volunteer].[SSN]', '[Volunteer].[SSN]';
 GO
 
 
-
---------------------------------------
---
------------------------------------------
-CREATE TABLE [Employee].[Rate]
+--------------------------------------------------------------------------------------------
+--  don't know if this pay rate hour thing is going to be used - maybe a modeling excercise
+--------------------------------------------------------------------------------------------
+CREATE TABLE [Volunteer].[HrRate]
 (
-	[RateId]	[int]			NOT NULL	IDENTITY(1,1),
+	[HrRateId]	[int]			NOT NULL	IDENTITY(1,1),
 	[Name]		[varchar](30)	NOT NULL	UNIQUE,
-	[HrPay]		[money]			NOT NULL
-PRIMARY KEY ([RateId])
+	[HrPayAmt]	[money]			NOT NULL
+PRIMARY KEY ([HrRateId])
 ) ON [PRIMARY]
 GO
 
-SET IDENTITY_INSERT [Employee].[Rate] ON;
-INSERT [Employee].[Rate] (RateId, Name, HrPay)
+SET IDENTITY_INSERT [Volunteer].[HrRate] ON;
+INSERT [Volunteer].[HrRate] (HrRateId, Name, HrPayAmt)
 SELECT 1, 'Probation', 10 UNION
 SELECT 2, 'Serf', 11 UNION
 SELECT 3, 'Peasant', 12 UNION
 SELECT 4, 'Knight', 13 UNION
 SELECT 5, 'Manager/Lord/Noble', 14
-SET IDENTITY_INSERT [Employee].[Rate] OFF;
+SET IDENTITY_INSERT [Volunteer].[HrRate] OFF;
 GO
 
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Employee].[Role]
+CREATE TABLE [Volunteer].[Role]
 (
 	[RoleId]			[int]			NOT NULL	IDENTITY(1,1),
 	[Role]				[varchar](30)	NOT NULL	UNIQUE,
-	[DefaultRateId]		[int]			NULL
+	[DefaultHrRateId]	[int]			NULL
 PRIMARY KEY ([RoleId])
-FOREIGN KEY ([DefaultRateId]) REFERENCES [Employee].[Rate] (RateId)
+FOREIGN KEY ([DefaultHrRateId]) REFERENCES [Volunteer].[HrRate] (HrRateId)
 ) ON [PRIMARY]
 GO
 
-SET IDENTITY_INSERT [Employee].[Role] ON;
-INSERT [Employee].[Role] (RoleId, Role, DefaultRateId)
+SET IDENTITY_INSERT [Volunteer].[Role] ON;
+INSERT [Volunteer].[Role] (RoleId, Role, DefaultHRRateId)
 SELECT 1, 'Screener', 1 UNION
 SELECT 2, 'Manager', 5 UNION
 SELECT 3, 'Closer', NULL UNION
 SELECT 4, 'T.O.', NULL
-SET IDENTITY_INSERT [Employee].[Role] OFF;
+SET IDENTITY_INSERT [Volunteer].[Role] OFF;
+GO
+
+CREATE TABLE [Volunteer].[TaxClass]
+(
+	[TaxClass]			[varchar](10)		NOT NULL UNIQUE,
+PRIMARY KEY ([TaxClass])
+);
+GO
+
+INSERT [Volunteer].[TaxClass] (TaxClass)
+select 'W2' UNION
+select '1099';
 GO
 
 ---------------------------------------
--- drop TABLE [Employee].[Employee]
+-- drop TABLE [Volunteer].[Volunteer]
 -----------------------------------------
-CREATE TABLE [Employee].[Employee]
+CREATE TABLE [Volunteer].[Volunteer]
 (
-	[EmplId]			[int]				NOT NULL	IDENTITY(1,1),
-	[SSN]				[Employee].[SSN]	NOT NULL	UNIQUE,
+	[VolunteerId]		[int]				NOT NULL	IDENTITY(1,1),
+	[SSN]				[Volunteer].[SSN]	NOT NULL	UNIQUE,
+	[TaxClass]			[varchar](10)		NOT NULL,
 	[RoleId]			[int]				NOT NULL,
-	[RateId]			[int]				NOT NULL,
+	[HrRateId]			[int]				NOT NULL,
 	[HireDt]			[smalldatetime]		NOT NULL,
 	[FirstName]			[varchar](20)		NOT NULL,
 	[LastName]			[varchar](30)		NULL,
@@ -695,52 +707,53 @@ CREATE TABLE [Employee].[Employee]
 	[City]				[varchar](30)		NULL,
 	[State]				[State]				NULL,
 	[Zip]				[varchar](10)		NULL,
-PRIMARY KEY ([EmplId]),
-FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId),
-FOREIGN KEY ([RateId]) REFERENCES [Employee].[Rate] (RateId),
+PRIMARY KEY ([VolunteerId]),
+FOREIGN KEY ([TaxClass]) REFERENCES [Volunteer].[TaxClass] (TaxClass),
+FOREIGN KEY ([RoleId]) REFERENCES [Volunteer].[Role] (RoleId),
+FOREIGN KEY ([HrRateId]) REFERENCES [Volunteer].[HrRate] (HrRateId),
 FOREIGN KEY ([HireDt]) REFERENCES [Legend].[Day] (Dt)
 );
 GO
 
-SET IDENTITY_INSERT [Employee].[Employee] ON;
-INSERT [Employee].[Employee] (EmplId, SSN, RoleId, RateId, FirstName, HireDt)
-select 1, '123-45-6789', 3, 5, 'Tawney', '2015-04-01' union
-select 2, '234-12-3456', 1, 1, 'Guz Jr', '2015-04-01' union
-SELECT 3, '566-89-8469', 2, 5, 'Chainz', '2015-04-01' union
-select 4, '123-45-6798', 1, 2, 'Prego', '2015-04-01'
-SET IDENTITY_INSERT [Employee].[Employee] OFF;
+SET IDENTITY_INSERT [Volunteer].[Volunteer] ON;
+INSERT [Volunteer].[Volunteer] (VolunteerId, SSN, TaxClass, RoleId, HrRateId, FirstName, HireDt)
+select 1, '123-45-6789', '1099', 3, 5, 'Tawney', '2015-04-01' union
+select 2, '234-12-3456', '1099', 1, 1, 'Guz Jr', '2015-04-01' union
+SELECT 3, '566-89-8469', '1099', 2, 5, 'Chainz', '2015-04-01' union
+select 4, '123-45-6798', 'W2', 1, 2, 'Prego', '2015-04-01'
+SET IDENTITY_INSERT [Volunteer].[Volunteer] OFF;
 
--- select * from Employee.Employee
+-- select * from [Volunteer].[Volunteer]
 
 /*
 select e.FirstName, o.Role, r.Name
-from [Employee].[Employee] e, [Employee].[Role] o, [Employee].[Rate] r
-where e.RateId = r.RateId
-  and e.RoleId = o.RoleId
+from [Volunteer].[Volunteer] r, [Volunteer].[Role] o, [Volunteer].[HrRate] r
+where v.RateId = r.RateId
+  and v.RoleId = o.RoleId
 */
 
 ---------------------------------------
--- drop table [Employee].[Day]
+-- drop table [Volunteer].[Day]
 -----------------------------------------
-CREATE TABLE [Employee].[Day]
+CREATE TABLE [Volunteer].[Day]
 (
-	[EmplId]			[int]				NOT NULL,
+	[VolunteerId]		[int]				NOT NULL,
 	[RoleId]			[int]				NOT NULL,
 	[Dt]				[smalldatetime]		NOT NULL,
 	[StartTm]			[smalldatetime]		NOT NULL,
 	[EndTm]				[smalldatetime]		NULL,
 	[TransferCnt]		[smallint]			NULL,
 	[CloseCnt]			[smallint]			NULL
-FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([VolunteerId]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
 FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
+FOREIGN KEY ([RoleId]) REFERENCES [Volunteer].[Role] (RoleId)
 );
 GO
 
 --------------------------------------------------------------------------------
 -- An employee can be/play/work as one or more roles in a day
 --------------------------------------------------------------------------------
-CREATE UNIQUE INDEX PK_EmployeeDay ON [Employee].[Day] ([EmplId], [RoleId], [Dt])
+CREATE UNIQUE INDEX PK_VolunteerDay ON [Volunteer].[Day] ([VolunteerId], [RoleId], [Dt])
 GO
 
 
@@ -847,7 +860,7 @@ SELECT 1, NULL,		'P',			'P',			'Equity',	@Day1,	800000, NULL UNION
 SELECT 2, NULL,		'CZ',			'Chainz',		'Equity',	@Day1,	100000, NULL UNION
 SELECT 3, NULL,		'MZ',			'Marco',		'Equity',	@Day1,	100000, NULL UNION
 
-SELECT 5, NULL,		'Employee',		'Employee Expense',		'Liability',@Day1,	NULL, NULL UNION
+SELECT 5, NULL,		'Labor',		'Employee Labor Expense',		'Liability',@Day1,	NULL, NULL UNION
 SELECT 7, NULL,		'TN',			'TransNational',		'Asset',	@Day1,	NULL, NULL UNION
 SELECT 8, NULL,		'OMNI',			'OmniSure - Reserve',	'Asset',	@Day1,	NULL, NULL UNION
 
@@ -888,20 +901,20 @@ SET IDENTITY_INSERT [Acct].[Acct] OFF;
 -- select * from Acct.Acct
 
 -----------------------------------------------
---  employee is the one who closes the period by creating the journal entry.
+--  is the one who closes the period by creating the journal entry.
 -----------------------------------------------
 CREATE TABLE [Acct].[Journal]
 (
 	[JournalId]			[int]				NOT NULL IDENTITY (1,1),
 	[ParentJournalId]	[int]				NULL,
 	[Dt]				[smalldatetime]		NOT NULL,
-	[EmplId]			[int]				NOT NULL,
+	[VolunteerId]		[int]				NOT NULL,
 	[Qtr]				[Acct].[Qtr]		NOT NULL,
 	[Week]				[smallint]			NOT NULL,					-- represents the week range 
 PRIMARY KEY ([JournalId]),
 FOREIGN KEY ([ParentJournalId]) REFERENCES [Acct].[Journal] ( JournalId ),
 FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] ( Dt ),
-FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] ( EmplId )
+FOREIGN KEY ([VolunteerId]) REFERENCES [Volunteer].[Volunteer] ( VolunteerId )
 );
 
 -----------------------------------------------
@@ -1012,7 +1025,7 @@ CREATE TABLE [Acct].[Disb]
 PRIMARY KEY ([DisbId]),
 FOREIGN KEY ([DisbMethod]) REFERENCES [Acct].[DisbMethod] ( DisbMethod )
 );
-
+GO
 
 --***************************************
 --
@@ -1659,18 +1672,78 @@ CREATE TABLE [Contract].[PayPlan]
 	[Name]			varchar(30)		NOT NULL	UNIQUE,
 	[RoleId]		[int]			NOT NULL
 PRIMARY KEY (PayPlanId),
-FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
+FOREIGN KEY ([RoleId]) REFERENCES [Volunteer].[Role] (RoleId)
 );
 GO
 
-DECLARE @RoleId_Closer int = (SELECT RoleId FROM [Employee].[Role] WHERE Role = 'Closer');
+DECLARE @RoleId_Closer int = (SELECT RoleId FROM [Volunteer].[Role] WHERE Role = 'Closer');
 SET IDENTITY_INSERT [Contract].[PayPlan] ON;
 INSERT [Contract].[PayPlan] (PayPlanId, Name, RoleId)
 SELECT 1, 'Bizkit', @RoleId_Closer ;
 SET IDENTITY_INSERT [Contract].[PayPlan] OFF;
 GO
 
--- drop table [Car].[Contract];
+/*
+CREATE TABLE [Acct].[Acct]
+(
+	[AppNum]				[char](10)			NOT NULL,
+	[AcctNum]				[char](15)			NULL,
+	[ContractNum]			[varchar](10)		NULL,
+	[SaleDt]				[smalldatetime]		NULL,
+	[RateDt]				[smalldatetime]		NULL,
+	[Vin]					[char](17)			NULL,
+	[Make]					[varchar](20)		NULL,
+	[Model]					[varchar](30)		NULL,
+	[Year]					[char](4)			NULL,
+	[NewOrUsed]				[char](1)			NULL,
+	[FirstName]				[varchar](20)		NULL,
+	[LastName]				[varchar](30)		NULL,
+	[InsuredName]			[varchar](50)		NULL,
+	[Address]				[varchar](50)		NULL,
+	[City]					[varchar](30)		NULL,
+	[State]					[char](2)			NULL,
+	[Zip]					[varchar](10)		NULL,
+	[Phone]					[varchar](10)		NULL,
+	[Phone2]				[varchar](10)		NULL,
+	[Email]					[varchar](50)		NULL,
+	[Salesman]				[varchar](10)		NULL,
+	[Admin]					[varchar](10)		NULL,
+	[CoverageType]			[varchar](10)		NULL,
+	[Coverage]				[varchar](10)		NULL,
+	[TermMonth]				[smallint]			NULL,
+	[TermMiles]				[int]				NULL,
+	[Deduct]				[money]				NULL,
+	[Class]					[varchar](10)		NULL,
+	[PurchOdom]				[int]				NULL,
+	[ExpOdom]				[int]				NULL,
+	[TotalPremiumAmt]		[money]				NULL,
+	[SalesTaxAmt]			[money]				NULL,
+	[PayPlan]				[varchar](10)		NULL,
+	[FinanceFeeAmt]			[money]				NULL,
+	[PaymentAmt]			[money]				NULL,
+	[NumPayments]			[smallint]			NULL,
+	[DownPaymentAmt]		[money]				NULL,
+	[FinanceCompany]		[varchar](10)		NULL,
+	[FinanceNum]			[varchar](10)		NULL,
+	[FinancedAmt]			[money]				NULL,
+	[FirstBillDt]			[smalldatetime]		NULL,
+	[GrossProfitAmt]		[money]				NULL,
+	[NetProfitAmt]			[money]				NULL,
+	[ReleaseDt]				[smalldatetime]		NULL,
+	[ContractCostAmt]		[money]				NULL,
+	[DiscountAmt]			[money]				NULL,
+	[DisbursementAmt]		[money]				NULL,
+	[FundingToEntityAmt]	[money]				NULL,
+	[ReserveAmt]			[money]				NULL,
+	[EffectiveDt]			[smalldatetime]		NULL,
+	[ExpireDt]				[smalldatetime]		NULL,
+	[Cancelled]				[char](1)			NULL,
+	[CancelDt]				[smalldatetime]		NULL,
+	[InstallmentsMade]		[smallint]			NULL,
+	[LastPaymentRcvdDt]		[smalldatetime]		NULL
+) ON [PRIMARY]
+-- GO
+*/
 
 ---------------------------------------
 --
@@ -1679,9 +1752,10 @@ CREATE TABLE [Car].[Contract]
 (
 	[ContractId]			[int]				NOT NULL	IDENTITY(1,1),
 	[AppNum]				[varchar](20)		NOT NULL,	-- likely oughta be unique
-	[EmplId_Open]			[int]				NOT NULL,
-	[EmplId_Sale]			[int]				NOT NULL,
-	[EmplId_TO]				[int]				NULL,
+	[VolunteerId_Open]		[int]				NOT NULL,
+	[VolunteerId_Sale]		[int]				NOT NULL,
+	[VolunteerId_TO]		[int]				NULL,
+	[VolunteerId_TA]		[int]				NULL,
 	[FirstName]				[varchar](30)		NULL,
 	[LastName]				[varchar](30)		NULL,
 	[Address]				[varchar](50)		NULL,
@@ -1722,9 +1796,10 @@ CREATE TABLE [Car].[Contract]
 	[CancelReturnAmt]		[money]				NULL,
 PRIMARY KEY ([ContractId]),
 FOREIGN KEY ([Admin]) REFERENCES [Contract].[Admin] (Admin),
-FOREIGN KEY ([EmplId_Open]) REFERENCES [Employee].[Employee] (EmplId),
-FOREIGN KEY ([EmplId_Sale]) REFERENCES [Employee].[Employee] (EmplId),
-FOREIGN KEY ([EmplId_TO]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([VolunteerId_Open]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
+FOREIGN KEY ([VolunteerId_Sale]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
+FOREIGN KEY ([VolunteerId_TO]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
+FOREIGN KEY ([VolunteerId_TA]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
 -- FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
 FOREIGN KEY ([Vin]) REFERENCES [Car].[Car] (Vin),
 FOREIGN KEY ([SaleDt]) REFERENCES [Legend].[Day] (Dt),
@@ -1892,7 +1967,7 @@ select 1, 800, 210
 GO
 
 --------------------------------------------------
--- drop table [Employee].[GravyMod_Downpayment]
+-- drop table [].[GravyMod_Downpayment]
 --------------------------------------------------
 CREATE TABLE [Pay].[GravyMod_DownPayment]
 (
@@ -1948,7 +2023,7 @@ GO
 -- select * from [Pay].[GravyMod_Retail];
 
 ---------------------------------------
--- drop table [Employee].[GravyMod_Term]
+-- drop table [].[GravyMod_Term]
 -----------------------------------------
 CREATE TABLE [Pay].[GravyMod_PayPlanTerm]
 (
@@ -1978,20 +2053,20 @@ GO
 ------------------------------------------
 -- 
 ------------------------------------------
-CREATE TABLE [Contract].[EmployeePay]
+CREATE TABLE [Contract].[VolunteerPay]
 (
 	[ContractId]		[int]					NOT NULL,
-	[EmplId]			[int]					NOT NULL,
+	[VolunteerId]		[int]					NOT NULL,
 	[SaleRole]			[Legend].[SaleRole]		NOT NULL,
 	[PayPlanId]			[int]					NOT NULL,
 	[TransId]			[int]					NULL,
 FOREIGN KEY ([ContractId]) REFERENCES [Car].[Contract] (ContractId),
-FOREIGN KEY ([EmplId]) REFERENCES [Employee].[Employee] (EmplId),
+FOREIGN KEY ([VolunteerId]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
 FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
 FOREIGN KEY ([TransId]) REFERENCES [Acct].[Tx] (TxId)
 );
 
-CREATE UNIQUE INDEX PK_ContractEmployeeSaleRole ON [Contract].[EmployeePay] ( ContractId, SaleRole );
+CREATE UNIQUE INDEX PK_ContractVolunteerSaleRole ON [Contract].[VolunteerPay] ( ContractId, SaleRole );
 
 /*
 select * from [Policy].[PayPlan];
@@ -2012,12 +2087,12 @@ select * from [Pay].[Sale]
 -------------------------
 -- Hire some screeners
 -------------------------
-select * from employee.employee
+select * from Volunteer.Volunteer
 
-DECLARE @RoleId int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener')
-DECLARE @RateId int = (SELECT RateId from [Employee].[Rate] WHERE Name = 'Probation')
+DECLARE @RoleId int = (SELECT RoleId from [Volunteer].[Role] WHERE Role = 'Screener')
+DECLARE @RateId int = (SELECT RateId from [Volunteer].[Rate] WHERE Name = 'Probation')
 
-INSERT [Employee].[Employee] (RoleId, RateId, FirstName, HireDt)
+INSERT [Volunteer].[Volunteer] (RoleId, RateId, FirstName, HireDt)
 select @RoleId, @RateId, 'Kitty', '2015-04-15' union
 select @RoleId, @RateId, 'Chad', '2015-04-15' union
 select @RoleId, @RateId, 'Smith', '2015-04-15' union
@@ -2029,14 +2104,14 @@ GO
 
 /*
 select * from Policy.Policy
-select * from employee.employee
-select * from employee.day
+select * from Volunteer.Volunteer
+select * from Volunteer.day
 */
 
 -- add housrs worked
 /*
--- truncate table [Employee].[Day];
-select * from employee.Day
+-- truncate table [Volunteer].[Day];
+select * from Volunteer.Day
 
 select * from Employee.Employee
 select * from Employee.Role
@@ -2050,62 +2125,62 @@ GO
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
-	DECLARE @RoleId_Screener int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener');
-	DECLARE @RoleId_Closer int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Closer');
+	DECLARE @RoleId_Screener int = (SELECT RoleId from [Volunteer].[Role] WHERE Role = 'Screener');
+	DECLARE @RoleId_Closer int = (SELECT RoleId from [Volunteer].[Role] WHERE Role = 'Closer');
 	---------------------------------------------------------------------------------------------
 	--  Chainz Works as a screener
 	---------------------------------------------------------------------------------------------
-	DECLARE @EmplId_Chainz int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Chainz');
-	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @EmplId_Chainz, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
-	select @EmplId_Chainz, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
-	select @EmplId_Chainz, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
-	select @EmplId_Chainz, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	DECLARE @VolunteerId_Chainz int = (SELECT VolunteerId from [Volunteer].[Volunteer] WHERE FirstName = 'Chainz');
+	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @VolunteerId_Chainz, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
+	select @VolunteerId_Chainz, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
+	select @VolunteerId_Chainz, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
+	select @VolunteerId_Chainz, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
 	;
 
 	---------------------------------------------------------------------------------------------
 	--  GuzJr Works as a screener
 	---------------------------------------------------------------------------------------------
-	DECLARE @EmplId_GuzJr int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Guz Jr');
-	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @EmplId_GuzJr, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
-	select @EmplId_GuzJr, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
-	select @EmplId_GuzJr, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
-	select @EmplId_GuzJr, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	DECLARE @VolunteerId_GuzJr int = (SELECT VolunteerId from [Volunteer].[Volunteer] WHERE FirstName = 'Guz Jr');
+	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @VolunteerId_GuzJr, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
+	select @VolunteerId_GuzJr, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
+	select @VolunteerId_GuzJr, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
+	select @VolunteerId_GuzJr, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
 	;
 
 	---------------------------------------------------------------------------------------------
 	--  Prego Works as a screener
 	---------------------------------------------------------------------------------------------
-	DECLARE @EmplId_Prego int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Prego');
-	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @EmplId_Prego, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 4, 0 union
-	select @EmplId_Prego, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 0 union
-	select @EmplId_Prego, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 2, 0 union
-	select @EmplId_Prego, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 2, 0 -- union
+	DECLARE @VolunteerId_Prego int = (SELECT VolunteerId from [Volunteer].[Volunteer] WHERE FirstName = 'Prego');
+	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @VolunteerId_Prego, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 4, 0 union
+	select @VolunteerId_Prego, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 0 union
+	select @VolunteerId_Prego, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 2, 0 union
+	select @VolunteerId_Prego, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 2, 0 -- union
 	;
 
 	---------------------------------------------------------------------------------------------
 	--  Tawney Works as a screener
 	---------------------------------------------------------------------------------------------
-	DECLARE @EmplId_Tawney int = (SELECT EmplId from [Employee].[Employee] WHERE FirstName = 'Tawney');
-	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @EmplId_Tawney, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
-	select @EmplId_Tawney, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
-	select @EmplId_Tawney, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
-	select @EmplId_Tawney, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	DECLARE @VolunteerId_Tawney int = (SELECT VolunteerId from [Volunteer].[Volunteer] WHERE FirstName = 'Tawney');
+	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @VolunteerId_Tawney, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
+	select @VolunteerId_Tawney, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
+	select @VolunteerId_Tawney, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
+	select @VolunteerId_Tawney, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
 	;
 
 	---------------------------------------------------------------------------------------------
 	--  Tawney Works as a Closer
 	---------------------------------------------------------------------------------------------
-	insert [Employee].[Day] (EmplId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @EmplId_Tawney, @RoleId_Closer, '2015-03-27', '2015-03-27 12:45am', '2015-03-27 1:00pm', 0, 1 -- union
+	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @VolunteerId_Tawney, @RoleId_Closer, '2015-03-27', '2015-03-27 12:45am', '2015-03-27 1:00pm', 0, 1 -- union
 	;
 END
 GO
 
--- select * from employee.day
+-- select * from Volunteer.day
 
 ---------------------------------------------------------------------------------------------
 --  Write some policies
