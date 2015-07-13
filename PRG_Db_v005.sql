@@ -326,16 +326,37 @@ CREATE TABLE [Legend].[FirstName]
 );
 
 CREATE UNIQUE CLUSTERED INDEX PK_FirstName ON [Legend].[FirstName] (FirstName);
+GO
+
+-- truncate table [Legend].[FirstName];
 
 -----------------------------------------
 -- top 5000 are a bit more than 92%
 -----------------------------------------
 INSERT [Legend].[FirstName] (FirstName, Gender, Cnt, PercentWhole)
-SELECT TOP 5000 rtrim(FirstName), 'U' as Gender, Cnt, PercentWhole
+SELECT TOP 15000 [dbo].[udf_TitleCase] (rtrim(FirstName)), 'U' as Gender, Cnt, PercentWhole
 FROM [Joe].[legend].[FirstName]
 WHERE BadName = 'N'
   AND LEN(FirstName) <= 20
+  AND Cnt >= 15
 ORDER BY Cnt DESC;
+GO
+
+-- select * from [Legend].[FirstName] where Gender = 'U' order by cnt desc;
+
+update [Legend].[FirstName] SET Gender = 'M' WHERE FirstName in ('John','Mike','Mark','Matt','James','Jim','David','Robert','Richard','Steve','Paul','Thomas','Tom','Paul','Gary',
+																 'Scott','Bill','Charles','Jeff','Michael','Bob','Brian','William','Larry','Joe','Kevin','Joseph','George',
+																 'Dan','Steven','Dave','Peter','Tim','Don','Frank','Ron','Greg','Dennis','Jerry','Rick','Daniel','Stephen',
+																 'Ken','Bruce','Eric','Donald','Terry','Jack','Edward','Randy','Ronald','Kenneth','Jeffrey','Ed',
+																 'Doug','Keith','Roger','Alan','Patrick','Craig','Tony','Anthony','Jason','Fred','Todd','Wayne','Jay',
+																 'Douglas','Christopher','Timothy','Carl','Lee','Brad','Andrew','Ray','Barry','Gregory','Chuck','Howard',
+																 'Matthew','Martin','Gerald','Rob','Phil','Jon','Ralph','Al','Walter','Henry','Allen','Raymond','Philip','Lawrence');
+
+update [Legend].[FirstName] SET Gender = 'F' WHERE FirstName in ('Mary','Linda','Susan','Karen','Lisa','Barbara','Nancy','Carol','Kathy','Jennifer','Donna','Patricia','Sharon',
+																 'Debbie','Diane','Michelle','Judy','Ann','Sandra','Laura','Elizabeth','Cindy','Julie','Amy','Kelly','Sue',
+																 'Janet','Brenda','Lynn','Deborah','Cheryl','Lori','Pam','Debra','Jane','Cathy','Christine','Denise','Sandy',
+																 'Kathleen','Maria');
+
 
 /*
 select max(len(FirstName)) from [Legend].[FirstName]
@@ -482,26 +503,25 @@ GO
 ---------------------------------------
 --	Call Disposition Codes and their meanings
 -----------------------------------------
-/*
 CREATE TABLE [Legend].[Disp]
 (
 	[DispCd]		[char](4)		NOT NULL,
 	[DispDesc]		[varchar](50)	NOT NULL,
 PRIMARY KEY ([DispCd])
 ) ON [PRIMARY]
--- GO
+GO
 
 INSERT [Legend].[Disp] (DispCd, DispDesc)
 SELECT 'DNC','Do Not Call' UNION
 SELECT 'NI', 'Not Interested' UNION
 SELECT 'NOC', 'Doesn''t Own Car' UNION
-SELECT 'WN', 'Wrong Number'
--- GO
--- set identity_insert [Legend].[Disp] OFF;
-*/
+SELECT 'WN', 'Wrong Number' UNION
+SELECT 'AA', 'Answering Machine Auto' UNION
+SELECT 'ADC', 'Disconnected Number Auto'; 
+GO
 
 ---------------------------------------
---
+-- use prg;
 -----------------------------------------
 /*
 CREATE TABLE [Legend].[FirstName]
@@ -512,17 +532,23 @@ CREATE TABLE [Legend].[FirstName]
 ) ON [PRIMARY]
 -- GO
 */
-
 -- save time while testing
 /*
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
 	INSERT [Legend].[FirstName] (FirstName, Cnt, BadName)
-	SELECT FirstName, Cnt, BadName
+	SELECT [dbo].[udf_TitleCase] (FirstName), Cnt, BadName
 	FROM [QSM].[Legend].[FirstName]
+	WHERE BadName = 'N'
+	  AND Cnt >= 15;
+
+/*	select count(*) FROM [QSM].[Legend].[FirstName]
+	select * FROM [QSM].[Legend].[FirstName] where BadName = 'N' and Cnt > 15 order by Cnt asc;
+	select [PRG].[dbo].[udf_TitleCase] ('Tina-marie');
+*/
 END
-GO
+-- GO
 */
 
 -- Figure out how to create the SIC tables correctly.
