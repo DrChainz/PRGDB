@@ -996,7 +996,6 @@ PRIMARY KEY ([LedgerId]),
 FOREIGN KEY ([TxId]) REFERENCES [Acct].[Tx] ( TxId ),
 FOREIGN KEY ([AcctId]) REFERENCES [Acct].[Acct] ( AcctId ),
 FOREIGN KEY ([Currency]) REFERENCES [Acct].[Currency] ( Currency ),
-
 );
 GO
 
@@ -1141,7 +1140,7 @@ PRIMARY KEY ([Make])
 GO
 
 INSERT [Car].[Make] ( Make, FactoryWarrantyBasic_Yr, FactoryWarrantyBasic_Miles, FactoryWarrantyDrivetrain_Yr, FactoryWarrantyDrivetrain_Miles )
-SELECT Make, FactoryWarrantyBasic_Yr, FactoryWarrantyBasic_Miles, FactoryWarrantyDrivetrain_Yr, FactoryWarrantyDrivetrain_Miles
+SELECT UPPER(Make), FactoryWarrantyBasic_Yr, FactoryWarrantyBasic_Miles, FactoryWarrantyDrivetrain_Yr, FactoryWarrantyDrivetrain_Miles
 FROM [PrivateReserve].[Car].[Make]
 GO
 
@@ -1264,6 +1263,7 @@ PRIMARY KEY (ModelLevel)
 );
 
 insert [Car].[ModelLevel] (ModelLevel)
+select 'Unknown' union
 select 'Entry' union
 select 'Luxury' union
 select 'Up Scale'
@@ -1277,23 +1277,31 @@ CREATE TABLE [Car].[MakeModel]
 	[Model]			[varchar](30)	NOT NULL,
 	[ClassSeries]	[varchar](30)	NULL,
 	[ModelType]		[varchar](20)	NOT NULL,
-	[ModelLevel]	[varchar](30)	NULL,
-FOREIGN KEY ([Make]) REFERENCES [Car].[Make](Make)
+	[ModelLevel]	[varchar](20)	NOT NULL,
+FOREIGN KEY ([Make]) REFERENCES [Car].[Make](Make),
+FOREIGN KEY ([ModelType]) REFERENCES [Car].[ModelType](ModelType),
+FOREIGN KEY ([ModelLevel]) REFERENCES [Car].[ModelLevel](ModelLevel)
 ) ON [PRIMARY]
 GO
 
 CREATE UNIQUE INDEX PK_MakeModel ON [Car].[MakeModel] ([Make], [Model])
 GO
 
-INSERT [Car].[MakeModel] ( Make, Model, ModelType )
-SELECT Make, Model, 'Car'
+INSERT [Car].[MakeModel] ( Make, Model, ModelType, ModelLevel )
+SELECT Make, Model, 'Car', 'Unknown'
 FROM [QSM].[CarData].[MakeModel]
 GO
 
-UPDATE [Car].[MakeModel] SET ClassSeries = o.ClassSeries, ModelLevel = o.Level, ModelType = o.Type
+UPDATE [Car].[MakeModel] SET ClassSeries = o.ClassSeries, ModelType = o.Type
 FROM [Car].[MakeModel] m, [QSM].[CarData].[MakeModelOfficial] o
 WHERE m.Make = o.Make
   AND m.Model = o.Model;
+
+UPDATE [Car].[MakeModel] SET ModelLevel = o.Level
+FROM [Car].[MakeModel] m, [QSM].[CarData].[MakeModelOfficial] o
+WHERE m.Make = o.Make
+  AND m.Model = o.Model
+  AND o.Level IS NOT NULL;
 
 ---------------------------------------
 --
@@ -1502,6 +1510,20 @@ INSERT [DNC].[AreaCd] (AreaCd)
 SELECT AreaCd
 FROM [PrivateReserve].[Dnc].[AreaCd]
  GO
+
+/*
+SELECT AreaCd
+FROM [PrivateReserve].[Dnc].[AreaCd]
+where areacd not in (select AreaCd from [Legend].[AreaCdState])
+*/
+/*
+select State, count(*)
+from qsm.CarData.Car
+where Wireless = 'N'
+  and substring(Phone,1,3) = '930'
+group by State
+order by count(*) desc;
+*/
 
 ---------------------------------------
 --
@@ -2349,7 +2371,8 @@ and Dt = '2015-04-17'
 --*****************************
 -- Clean Up
 --*****************************
-;
+GO
+
 DROP TABLE [dbo].[Tmp];
 
 
@@ -2365,3 +2388,24 @@ DROP TABLE [dbo].[Tmp];
 --**************************************************
 
 
+------------------------------------------------------------------------------------
+-- Test some stuff
+------------------------------------------------------------------------------------
+/*
+
+select Exclude, AnswerMachine, count(*)
+from Car.Car
+group by Exclude, AnswerMachine
+
+select * from Legend.AreaCdState
+
+select * from 
+
+
+
+select * from Car.make
+select * from Car.MakeInclude
+select * from Car.MakeExclude
+
+
+*/
