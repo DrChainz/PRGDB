@@ -783,6 +783,17 @@ where v.RateId = r.RateId
 ---------------------------------------
 -- drop table [Volunteer].[Day]
 -----------------------------------------
+CREATE TABLE [Volunteer].[VolunteerAlias]
+(
+	[Alias]				[varchar](30)		NOT NULL UNIQUE,
+	[VolunteerId]		[int]				NOT NULL,
+FOREIGN KEY ([VolunteerId]) REFERENCES [Volunteer].[Volunteer] (VolunteerId)
+)
+GO
+
+---------------------------------------
+-- drop table [Volunteer].[Day]
+-----------------------------------------
 CREATE TABLE [Volunteer].[Day]
 (
 	[VolunteerId]		[int]				NOT NULL,
@@ -1420,6 +1431,28 @@ FOREIGN KEY ([State]) REFERENCES [Legend].[State](State)
 ) ON [PRIMARY]
 GO
 
+-------------------------------------------------------
+-- drop table [Car].[ContractSale];
+-------------------------------------------------------
+CREATE TABLE [Car].[ContractSale]
+(
+	[Vin]			[Car].[VIN]			NOT NULL UNIQUE,
+	[Make]			varchar(20)			NOT NULL,
+	[Model]			varchar(30)			NOT NULL,
+	[Year]			char(4)				NOT NULL,
+);
+
+INSERT [Car].[ContractSale] ( Vin, Make, Model, Year)
+SELECT DISTINCT Vin, UPPER(Make), Model, Year
+FROM [QSM].[CarData].[SaleCar]
+WHERE Vin <> '' ;
+
+INSERT [Car].[ContractSale] ( Vin, Make, Model, Year)
+select Vin, Make, Model, Year
+from [PrivateReserve].[Acct].[Acct]
+where Vin not in (select Vin from [Car].[ContractSale])
+  and Vin <> ''
+  and Vin IS NOT NULL;
 
 --***************************************
 --
@@ -1691,14 +1724,14 @@ SET IDENTITY_INSERT [Contract].[Finance] OFF;
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Contract].[PayPlanTerm]
+CREATE TABLE [Contract].[TermMonth]
 (
-	[PayPlanTerm]		[smallint]			NOT NULL,
-PRIMARY KEY (PayPlanTerm)
+	[TermMonth]		[smallint]			NOT NULL	UNIQUE,
+PRIMARY KEY (TermMonth)
 );
 GO
 
-INSERT [Contract].[PayPlanTerm] (PayPlanTerm)
+INSERT [Contract].[TermMonth] (TermMonth)
 SELECT 0 UNION
 SELECT 6 UNION
 SELECT 9 UNION
@@ -1823,10 +1856,12 @@ CREATE TABLE [Car].[Contract]
 (
 	[ContractId]			[int]				NOT NULL	IDENTITY(1,1),
 	[AppNum]				[varchar](20)		NOT NULL,	-- likely oughta be unique
+	[ContractNum]			[varchar](20)		NOT NULL,	-- value that isn't always there
 	[VolunteerId_Open]		[int]				NOT NULL,
 	[VolunteerId_Sale]		[int]				NOT NULL,
 	[VolunteerId_TO]		[int]				NULL,
 	[VolunteerId_TA]		[int]				NULL,
+	[InsuredName]			[varchar](50)		NULL,
 	[FirstName]				[varchar](30)		NULL,
 	[LastName]				[varchar](30)		NULL,
 	[Address]				[varchar](50)		NULL,
@@ -1842,26 +1877,48 @@ CREATE TABLE [Car].[Contract]
 	[Make]					[varchar](20)		NOT NULL,
 	[Model]					[varchar](30)		NOT NULL,
 	[Year]					[Legend].[Year]		NOT NULL,
-	[Odom]					[int]				NULL,
+	[NewOrUsed]				[char](1)			NULL,
 	[Coverage]				[varchar](20)		NULL,		-- likely shorter than this as appears to be a code
-	[Term]					[varchar](20)		NULL,		-- likely to be shorter as also a code like 72/70
+	[Term]					[varchar](10)		NULL,
+	[TermMonth]				[smallint]			NULL,		-- likely to be shorter as also a code like 72/70
+	[TermMiles]				[int]				NULL,
 	[Deductable]			[money]				NULL,
 	[Class]					[varchar](10)		NULL,		-- also some kind of code
 	[Admin]					[varchar](10)		NOT NULL,	-- SunPath
 	[CoverageType]			[varchar](30)		NOT NULL,	-- like some set of values need to discover ('Exclusion')
 	[FinanceId]				[int]				NOT NULL,	-- omnisure
-	[ExpDt]					[smalldatetime]		NOT NULL,
+	[PurchOdom]				[int]				NULL,
 	[ExpOdom]				[int]				NOT NULL,	-- figure this has to be a value cannot be nothing.
-	[FirstBillDt]			[smalldatetime]		NOT NULL,
-	[VehiclePrice]			[money]				NULL,
-	[RetailPlusPlus]		[money]				NULL,
-	[Retail]				[money]				NULL,
-	[CustomerCost]			[money]				NULL,
+	[ExpDt]					[smalldatetime]		NOT NULL,
+	[TotalPremiumAmt]		[money]				NULL,
+	[SalesTaxAmt]			[money]				NULL,
+	[PayPlan]				[varchar](10)		NULL,
+	[FinanceFeeAmt]			[money]				NULL,
+	[PaymentAmt]			[money]				NULL,
+	[NumPayments]			[smallint]			NULL,
+	[DownPaymentAmt]		[money]				NULL,
+	[MonthPaymentAmt]		[money]				NOT NULL,
+	[FinanceCompany]		[varchar](10)		NULL,
+	[FinanceNum]			[varchar](10)		NULL,
+	[FinancedAmt]			[money]				NULL,
+	[FirstBillDt]			[smalldatetime]		NULL,
+	[ContractCostAmt]		[money]				NULL,
+	[DiscountAmt]			[money]				NULL,
+	[DisbursementAmt]		[money]				NULL,
+	[FundingToEntityAmt]	[money]				NULL,
+	[ReserveAmt]			[money]				NULL,
+	[EffectiveDt]			[smalldatetime]		NULL,
+	[ExpireDt]				[smalldatetime]		NULL,
+	[InstallmentsMade]		[smallint]			NULL,
+	[LastPaymentRcvdDt]		[smalldatetime]		NULL,
+	[RetailPlusPlusAmt]		[money]				NULL,
+	[RetailAmt]				[money]				NULL,
+	[CustomerCostAmt]		[money]				NULL,
 	[PaidInFull]			[Legend].[YesNo]	NOT NULL,
 	[PayPlanType]			[varchar](30)		NOT NULL,	-- Finnance or pay in full ????
-	[PayPlanTerm]			[smallint]			NOT NULL,
-	[DownPayment]			[money]				NOT NULL,
-	[MonthPayment]			[money]				NOT NULL,
+	[GrossProfitAmt]		[money]				NULL,
+	[NetProfitAmt]			[money]				NULL,
+	[ReleaseDt]				[smalldatetime]		NULL,
 	[IsCancelled]			[Legend].[YesNo]	NOT NULL,
 	[CancelDt]				[smalldatetime]		NULL,
 	[CancelReturnAmt]		[money]				NULL,
@@ -1877,9 +1934,13 @@ FOREIGN KEY ([SaleDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([RateDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([FirstBillDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([CancelDt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[PayPlanTerm] (PayPlanTerm)
+FOREIGN KEY ([TermMonth]) REFERENCES [Contract].[TermMonth] (TermMonth)
 );
 GO
+
+-- select * from [Contract].[PayPlanTerm]
+
+-- sp_help '[Contract].[PayPlanTerm]'
 
 -- we deal with the pay plan aspect of this 
 -- CREATE UNIQUE INDEX UK_Contract_EmplId_ClosingDt_SaleCnt ON [Car].[Contract] ([Sale_EmplId], [ClosingDt], [SaleCnt] );
@@ -2096,18 +2157,19 @@ GO
 ---------------------------------------
 -- drop table [].[GravyMod_Term]
 -----------------------------------------
-CREATE TABLE [Pay].[GravyMod_PayPlanTerm]
+
+CREATE TABLE [Pay].[GravyMod_PayPlanTermMonth]
 (
 	[PayPlanId]			[int]		NOT NULL,
-	[PayPlanTerm]		[smallint]	NOT NULL,
+	[TermMonth]			[smallint]	NOT NULL,
 	[Subtract]			[money]		NOT NULL
 FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
 -- FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[Term] (Months)
-FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[PayPlanTerm] (PayPlanTerm)
+FOREIGN KEY ([TermMonth]) REFERENCES [Contract].[TermMonth] (TermMonth)
 );
 GO
 
-CREATE UNIQUE INDEX PK_GravyMod_PayPlanTerm ON [Pay].[GravyMod_PayPlanTerm] ( [PayPlanId], [PayPlanTerm] );
+CREATE UNIQUE INDEX PK_GravyMod_PayPlanTermMonth ON [Pay].[GravyMod_PayPlanTerm] ( [PayPlanId], [TermMonth] );
 GO
 
 INSERT [Pay].[GravyMod_PayPlanTerm] ( PayPlanId, PayPlanTerm, Subtract )
@@ -2401,11 +2463,29 @@ select * from Legend.AreaCdState
 
 select * from 
 
-
+update Car.Make set Make = upper(Make);
 
 select * from Car.make
 select * from Car.MakeInclude
 select * from Car.MakeExclude
 
+select * from Car.MakeErr
+
+select * from Car.MakeModel where Make = 'CHEVROLET'
+
+
+select * from [Car].[ModelErr]
+where Make = 'CHEVROLET'
+  and Model like '%SILVERADO%'
+
+
+SILVERADO 1500 CLASSIC
+
+select * from [Car].[ContractSale];
+select * from [Car].[ContractSale];
+
+select Make, count(*) from [Car].[ContractSale]
+group by Make
+order by count(*) desc
 
 */
