@@ -1340,6 +1340,7 @@ CREATE TABLE [Car].[Car]
 	[Make]			[varchar](20)		NOT NULL,
 	[Model]			[varchar](30)		NOT NULL,
 	[Year]			[Legend].[Year]		NOT NULL,
+	[IsHybrid]		[Legend].[YesNo]	NOT NULL,
 	[Phone]			[Legend].[Phone]	NOT NULL,
 	[FirstName]		[varchar](20)		NULL,
 	[LastName]		[varchar](30)		NULL,
@@ -1350,6 +1351,7 @@ CREATE TABLE [Car].[Car]
 	[Zip]			[varchar](10)		NULL,
 	[Odom]			[varchar](20)		NULL,
 	[Wireless]		[Legend].[YesNo]	NOT NULL,
+	[AddDt]			[smalldatetime]		NOT NULL,
 	[Exclude]		[Legend].[YesNo]	NOT NULL,
 	[AnswerMachine]	[Legend].[YesNo]	NOT NULL,
 
@@ -1380,8 +1382,8 @@ group by Make
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
-	INSERT [Car].[Car] (VIN, Make, Model, Year, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address, Address2, City, State, Zip, Odom)
-	select top 10000 VIN, Make, Model, Year, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address1, Address2, City, State, Zip, Odom
+	INSERT [Car].[Car] (VIN, Make, Model, Year, IsHybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address, Address2, City, State, Zip, Odom, AddDt)
+	select top 10000 VIN, Make, Model, Year, Hybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address1, Address2, City, State, Zip, Odom, AddDt
 	from [QSM].[CarData].[Car]
 	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
 	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
@@ -1390,8 +1392,8 @@ BEGIN
 -- 	  and Exclude = 'N'
 	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
 
-	INSERT [Car].[Car] (VIN, Make, Model, Year, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address, Address2, City, State, Zip)
-	select VIN, Make, Model, Year, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address1, Address2, City, State, Zip
+	INSERT [Car].[Car] (VIN, Make, Model, Year, IsHybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address, Address2, City, State, Zip, AddDt)
+	select VIN, Make, Model, Year, Hybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address1, Address2, City, State, Zip, AddDt
 	from [QSM].[CarData].[Car]
 	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
 	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
@@ -1399,7 +1401,8 @@ BEGIN
 	  and State in (SELECT State FROM [PRG].[Legend].[State])
 -- 	  and Exclude = 'N'
 	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
-	  and vin in ('1FMEU75847UB32730','19UUA8F20BA000150');
+	  and vin in ('1FMEU75847UB32730','19UUA8F20BA000150')
+	  and vin not in (select Vin from [PRG].[Car].[Car]);
 
 -- likely need to alter the Exclude flag 
 --	  and Make = 'KIA' -- test 
@@ -1453,6 +1456,7 @@ from [PrivateReserve].[Acct].[Acct]
 where Vin not in (select Vin from [Car].[ContractSale])
   and Vin <> ''
   and Vin IS NOT NULL;
+GO
 
 --***************************************
 --
@@ -1602,8 +1606,13 @@ CREATE TABLE [DNC].[DNC_Log]
 ) ON [PRIMARY];
 GO
 
--- select * from PrivateReserve.dnc.dnc_log order by Dt desc
-
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+	INSERT [DNC].[DNC_Log] (Dt, Cnt, Cnt_DNC, Cnt_NI, Cnt_WN)
+	SELECT Dt, Cnt, Cnt_DNC, Cnt_NI, Cnt_WN
+	FROM [PrivateReserve].[DNC].[dnc_log] order by Dt desc
+END
 
 ---------------------------------------
 --
@@ -1617,6 +1626,8 @@ CREATE TABLE [DNC].[WirelessBlocks]
 	[PhoneBegin] [char](7) NULL
 ) ON [PRIMARY]
  GO
+
+
 
 ---------------------------------------
 --
@@ -1744,20 +1755,20 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Contract].[FinanceTerm]
+CREATE TABLE [Contract].[FinanceTermMonth]
 (
 	[FinanceId]		[int]			NOT NULL,
-	[PayPlanTerm]	[smallint]		NOT NULL,
+	[TermMonth]		[smallint]		NOT NULL,
 	[AdvanceRate]	[numeric](3,2)	NOT NULL,
 	[DiscountFee]	[numeric](4,4)	NOT NULL,
 	[MinFee]		money			NOT NULL,
 FOREIGN KEY ([FinanceId]) REFERENCES [Contract].[Finance] (FinanceId),
-FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[PayPlanTerm] (PayPlanTerm)
+FOREIGN KEY ([TermMonth]) REFERENCES [Contract].[TermMonth] (TermMonth)
 );
 
-CREATE UNIQUE INDEX PK_Contract_FinanceTerm ON [Contract].[FinanceTerm] (FinanceId, PayPlanTerm);
+CREATE UNIQUE INDEX PK_Contract_FinanceTermMonth ON [Contract].[FinanceTermMonth] (FinanceId, TermMonth);
 
-INSERT [Contract].[FinanceTerm] (FinanceId, PayPlanTerm, AdvanceRate, DiscountFee, MinFee)
+INSERT [Contract].[FinanceTermMonth] (FinanceId, TermMonth, AdvanceRate, DiscountFee, MinFee)
 SELECT 1, 6, .75, .06, 180 UNION
 SELECT 1, 9, .75, .06, 180 UNION
 SELECT 1, 12, .75, .06, 180 UNION
@@ -2169,10 +2180,10 @@ FOREIGN KEY ([TermMonth]) REFERENCES [Contract].[TermMonth] (TermMonth)
 );
 GO
 
-CREATE UNIQUE INDEX PK_GravyMod_PayPlanTermMonth ON [Pay].[GravyMod_PayPlanTerm] ( [PayPlanId], [TermMonth] );
+CREATE UNIQUE INDEX PK_GravyMod_PayPlanTermMonth ON [Pay].[GravyMod_PayPlanTermMonth] ( [PayPlanId], [TermMonth] );
 GO
 
-INSERT [Pay].[GravyMod_PayPlanTerm] ( PayPlanId, PayPlanTerm, Subtract )
+INSERT [Pay].[GravyMod_PayPlanTermMonth] ( PayPlanId, TermMonth, Subtract )
 SELECT 1, 0,   0 union
 SELECT 1, 6,   0 union
 SELECT 1, 9,  10 union
@@ -2318,11 +2329,11 @@ GO
 ---------------------------------------------------------------------------------------------
 --  Write some policies
 ---------------------------------------------------------------------------------------------
+/*
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
 
-/*
 SET IDENTITY_INSERT [Car].[Contract] ON;
 
 -- select top 100 * from car.car where year = '2011'
@@ -2367,6 +2378,7 @@ END
 ------------------------------------------------------------------
 -- Real Data that we figure out.
 ------------------------------------------------------------------
+/*
 
 select * from [PRG].[Contract].[Finance]
 
@@ -2378,7 +2390,7 @@ declare @EmplId_Open int = 1;
 declare @EmplId_TO int = NULL;
 declare @EmplId_Dan int = 3;
 
-/*
+
 insert [PRG].[Car].[Contract] ( AppNum, EmplId_Open, EmplId_Sale, EmplId_TO, FirstName, LastName, Address, City, State, Zip,
 								Phone, Phone2, Email, SaleDt, RateDt, 
 								Vin, Make, Model, Year, Odom,
