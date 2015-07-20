@@ -1104,6 +1104,11 @@ CREATE TABLE [Car].[Year]
 GO
 
 INSERT [Car].[Year] (Year)
+SELECT '2000' UNION
+SELECT '2001' UNION
+SELECT '2002' UNION
+SELECT '2003' UNION
+SELECT '2004' UNION
 SELECT '2005' UNION
 SELECT '2006' UNION
 SELECT '2007' UNION
@@ -1341,7 +1346,7 @@ CREATE TABLE [Car].[Car]
 	[Model]			[varchar](30)		NOT NULL,
 	[Year]			[Legend].[Year]		NOT NULL,
 	[IsHybrid]		[Legend].[YesNo]	NOT NULL,
-	[Phone]			[Legend].[Phone]	NOT NULL,
+	[Phone]			[Legend].[Phone]	NULL,
 	[FirstName]		[varchar](20)		NULL,
 	[LastName]		[varchar](30)		NULL,
 	[Address]		[varchar](50)		NULL,
@@ -1368,7 +1373,7 @@ select count(*) from [Car].[Car]
 
 select Wireless, count(*)
 from [Car].[Car]
-where Exclude = 'N'
+--where Exclude = 'N'
 group by Wireless
 
 select * from car.year
@@ -1403,6 +1408,42 @@ BEGIN
 	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
 	  and vin in ('1FMEU75847UB32730','19UUA8F20BA000150')
 	  and vin not in (select Vin from [PRG].[Car].[Car]);
+
+
+	INSERT [Car].[Car] (VIN, Make, Model, Year, IsHybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address, Address2, City, State, Zip, AddDt)
+	select VIN, Make, Model, Year, Hybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address1, Address2, City, State, Zip, AddDt
+	from [QSM].[CarData].[Car]
+	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
+	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
+	  and Year in (SELECT Year FROM [PRG].[Car].[Year])
+	  and State in (SELECT State FROM [PRG].[Legend].[State])
+-- 	  and Exclude = 'N'
+	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+	  and vin in (select Vin from [PrivateReserve].[Acct].[Acct])
+	  and vin not in (select Vin from [PRG].[Car].[Car]);
+
+	-- wrong but just to get the thing going
+	update [PrivateReserve].[Acct].[Acct] set State = 'CA' where State IS NULL;
+
+	update [PrivateReserve].[Acct].[Acct] set Phone2 = substring(Phone,1,3) + substring(Phone,5,3) + substring(Phone,9,4)
+	where Phone2 LIKE '[0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]';
+
+	INSERT [Car].[Car] (VIN, Make, Model, Year, IsHybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address, Address2, City, State, Zip, AddDt)
+	select VIN, Make, Model, Year, 'N' Hybrid, Phone2, 'N' Wireless, 'N' Exclude, 'N' AnswerMachine, FirstName, LastName, Address, '' Address2, City, State, Zip,
+	cast(floor(cast(GETDATE() as float)) as smalldatetime) AddDt
+	from [PrivateReserve].[Acct].[Acct]
+	where vin not in (select Vin from [Car].[Car]);
+	
+/*	
+	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
+	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
+	  and Year in (SELECT Year FROM [PRG].[Car].[Year])
+	  and State in (SELECT State FROM [PRG].[Legend].[State])
+-- 	  and Exclude = 'N'
+	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+	  and vin in (select Vin from [PrivateReserve].[Acct].[Acct])
+	  and vin not in (select Vin from [PRG].[Car].[Car]);
+*/
 
 -- likely need to alter the Exclude flag 
 --	  and Make = 'KIA' -- test 
@@ -1457,6 +1498,17 @@ where Vin not in (select Vin from [Car].[ContractSale])
   and Vin <> ''
   and Vin IS NOT NULL;
 GO
+
+update [Car].[ContractSale] set Make = 'MERCEDES-BENZ' where Make = 'MERCEDES BENZ';
+GO
+
+/*
+select Make, Model, count(*)
+from [Car].[ContractSale]
+-- where Make not in (select Make from Car.Make)
+group by Make, Model;
+*/
+
 
 --***************************************
 --
@@ -1706,6 +1758,7 @@ GO
 
 INSERT [Contract].[Admin] (Admin, Name, AcctId )
 SELECT 'AASB', 'American Auto Shield', 18 UNION
+SELECT 'AASBF', 'American Auto Shield', 18 UNION		-- not sure if its really the same admin as AASB
 SELECT 'ROYSHD', 'Royal Shield', 19 UNION
 SELECT 'ROYSEN', 'Sentinel', 20  UNION
 SELECT 'SUNPATH', 'SunPath', 21 UNION
@@ -1735,15 +1788,16 @@ SET IDENTITY_INSERT [Contract].[Finance] OFF;
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Contract].[TermMonth]
+CREATE TABLE [Contract].[NumPayment]
 (
-	[TermMonth]		[smallint]			NOT NULL	UNIQUE,
-PRIMARY KEY (TermMonth)
+	[NumPayment]		[smallint]			NOT NULL	UNIQUE,
+PRIMARY KEY (NumPayment)
 );
 GO
 
-INSERT [Contract].[TermMonth] (TermMonth)
+INSERT [Contract].[NumPayment] (NumPayment)
 SELECT 0 UNION
+SELECT 3 UNION
 SELECT 6 UNION
 SELECT 9 UNION
 SELECT 12 UNION
@@ -1755,20 +1809,20 @@ GO
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Contract].[FinanceTermMonth]
+CREATE TABLE [Contract].[FinanceNumPayment]
 (
 	[FinanceId]		[int]			NOT NULL,
-	[TermMonth]		[smallint]		NOT NULL,
+	[NumPayment]	[smallint]		NOT NULL,
 	[AdvanceRate]	[numeric](3,2)	NOT NULL,
 	[DiscountFee]	[numeric](4,4)	NOT NULL,
 	[MinFee]		money			NOT NULL,
 FOREIGN KEY ([FinanceId]) REFERENCES [Contract].[Finance] (FinanceId),
-FOREIGN KEY ([TermMonth]) REFERENCES [Contract].[TermMonth] (TermMonth)
+FOREIGN KEY ([NumPayment]) REFERENCES [Contract].[NumPayment] (NumPayment)
 );
 
-CREATE UNIQUE INDEX PK_Contract_FinanceTermMonth ON [Contract].[FinanceTermMonth] (FinanceId, TermMonth);
+CREATE UNIQUE INDEX PK_Contract_FinanceNumPayment ON [Contract].[FinanceNumPayment] (FinanceId, NumPayment);
 
-INSERT [Contract].[FinanceTermMonth] (FinanceId, TermMonth, AdvanceRate, DiscountFee, MinFee)
+INSERT [Contract].[FinanceNumPayment] (FinanceId, NumPayment, AdvanceRate, DiscountFee, MinFee)
 SELECT 1, 6, .75, .06, 180 UNION
 SELECT 1, 9, .75, .06, 180 UNION
 SELECT 1, 12, .75, .06, 180 UNION
@@ -1867,9 +1921,9 @@ CREATE TABLE [Car].[Contract]
 (
 	[ContractId]			[int]				NOT NULL	IDENTITY(1,1),
 	[AppNum]				[varchar](20)		NOT NULL,	-- likely oughta be unique
-	[ContractNum]			[varchar](20)		NOT NULL,	-- value that isn't always there
-	[VolunteerId_Open]		[int]				NOT NULL,
-	[VolunteerId_Sale]		[int]				NOT NULL,
+	[ContractNum]			[varchar](20)		NULL,	-- value that isn't always there
+	[VolunteerId_Open]		[int]				NULL,
+	[VolunteerId_Sale]		[int]				NULL,
 	[VolunteerId_TO]		[int]				NULL,
 	[VolunteerId_TA]		[int]				NULL,
 	[InsuredName]			[varchar](50)		NULL,
@@ -1877,38 +1931,37 @@ CREATE TABLE [Car].[Contract]
 	[LastName]				[varchar](30)		NULL,
 	[Address]				[varchar](50)		NULL,
 	[City]					[varchar](30)		NULL,
-	[State]					[dbo].[State]		NOT NULL,
+	[State]					[dbo].[State]		NULL,
 	[Zip]					[varchar](10)		NULL,
 	[Phone]					[Legend].[Phone]	NULL,
 	[Phone2]				[Legend].[Phone]	NULL,
 	[Email]					[varchar](50)		NULL,
-	[SaleDt]				[smalldatetime]		NOT NULL,
-	[RateDt]				[smalldatetime]		NOT NULL,
-	[Vin]					[Car].[VIN]			NOT NULL,
-	[Make]					[varchar](20)		NOT NULL,
-	[Model]					[varchar](30)		NOT NULL,
-	[Year]					[Legend].[Year]		NOT NULL,
+	[SaleDt]				[smalldatetime]		NULL,
+	[RateDt]				[smalldatetime]		NULL,
+	[Vin]					[Car].[VIN]			NULL,
+	[Make]					[varchar](20)		NULL,
+	[Model]					[varchar](30)		NULL,
+	[Year]					[Legend].[Year]		NULL,
 	[NewOrUsed]				[char](1)			NULL,
 	[Coverage]				[varchar](20)		NULL,		-- likely shorter than this as appears to be a code
 	[Term]					[varchar](10)		NULL,
 	[TermMonth]				[smallint]			NULL,		-- likely to be shorter as also a code like 72/70
 	[TermMiles]				[int]				NULL,
-	[Deductable]			[money]				NULL,
+	[DeductAmt]				[money]				NULL,
 	[Class]					[varchar](10)		NULL,		-- also some kind of code
-	[Admin]					[varchar](10)		NOT NULL,	-- SunPath
-	[CoverageType]			[varchar](30)		NOT NULL,	-- like some set of values need to discover ('Exclusion')
-	[FinanceId]				[int]				NOT NULL,	-- omnisure
+	[Admin]					[varchar](10)		NULL,	-- SunPath
+	[CoverageType]			[varchar](30)		NULL,	-- like some set of values need to discover ('Exclusion')
+	[FinanceId]				[int]				NULL,	-- omnisure
 	[PurchOdom]				[int]				NULL,
-	[ExpOdom]				[int]				NOT NULL,	-- figure this has to be a value cannot be nothing.
-	[ExpDt]					[smalldatetime]		NOT NULL,
+	[ExpOdom]				[int]				NULL,	-- figure this has to be a value cannot be nothing.
+	[ExpireDt]				[smalldatetime]		NULL,
 	[TotalPremiumAmt]		[money]				NULL,
 	[SalesTaxAmt]			[money]				NULL,
 	[PayPlan]				[varchar](10)		NULL,
 	[FinanceFeeAmt]			[money]				NULL,
 	[PaymentAmt]			[money]				NULL,
-	[NumPayments]			[smallint]			NULL,
+	[NumPayment]			[smallint]			NULL,
 	[DownPaymentAmt]		[money]				NULL,
-	[MonthPaymentAmt]		[money]				NOT NULL,
 	[FinanceCompany]		[varchar](10)		NULL,
 	[FinanceNum]			[varchar](10)		NULL,
 	[FinancedAmt]			[money]				NULL,
@@ -1919,14 +1972,13 @@ CREATE TABLE [Car].[Contract]
 	[FundingToEntityAmt]	[money]				NULL,
 	[ReserveAmt]			[money]				NULL,
 	[EffectiveDt]			[smalldatetime]		NULL,
-	[ExpireDt]				[smalldatetime]		NULL,
 	[InstallmentsMade]		[smallint]			NULL,
 	[LastPaymentRcvdDt]		[smalldatetime]		NULL,
 	[RetailPlusPlusAmt]		[money]				NULL,
 	[RetailAmt]				[money]				NULL,
 	[CustomerCostAmt]		[money]				NULL,
-	[PaidInFull]			[Legend].[YesNo]	NOT NULL,
-	[PayPlanType]			[varchar](30)		NOT NULL,	-- Finnance or pay in full ????
+	[IsPaidInFull]			[Legend].[YesNo]	NOT NULL,
+	[PayPlanType]			[varchar](30)		NULL,	-- Finnance or pay in full ????
 	[GrossProfitAmt]		[money]				NULL,
 	[NetProfitAmt]			[money]				NULL,
 	[ReleaseDt]				[smalldatetime]		NULL,
@@ -1945,9 +1997,172 @@ FOREIGN KEY ([SaleDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([RateDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([FirstBillDt]) REFERENCES [Legend].[Day] (Dt),
 FOREIGN KEY ([CancelDt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([TermMonth]) REFERENCES [Contract].[TermMonth] (TermMonth)
+FOREIGN KEY ([NumPayment]) REFERENCES [Contract].[NumPayment] (NumPayment)
 );
 GO
+
+-------------------------------------------------------------------------------------------
+--  Move the data loaded into [PrivateReserve].[Acct].[Acct]
+-------------------------------------------------------------------------------------------
+DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
+IF (@LoadData = 'Y')
+BEGIN
+
+	DECLARE @AppNum				varchar(10),
+			@AcctNum			varchar(15),
+			@ContractNum		varchar(10),
+			@SaleDt				smalldatetime,
+			@RateDt				smalldatetime,
+			@Vin				varchar(17),
+			@Make				varchar(20),
+			@Model				varchar(30),
+			@Year				char(4),
+			@NewOrUsed			char(1),
+			@FirstName			varchar(20),
+			@LastName			varchar(30),
+			@InsuredName		varchar(50),
+			@Address			varchar(50),
+			@City				varchar(30),
+			@State				char(2),
+			@Zip				varchar(10),
+			@Phone				char(10),
+			@Phone2				char(10),
+			@Email				varchar(50),
+			@Salesman			varchar(10),
+			@Admin				varchar(10),
+			@CoverageType		varchar(10),
+			@Coverage			varchar(10),
+			@TermMonth			smallint,
+			@TermMiles			int,
+			@DeductAmt			money,
+			@Class				varchar(10),
+			@PurchOdom			int,
+			@ExpOdom			int,
+			@ExpireDt			smalldatetime,
+			@TotalPremiumAmt	money,
+			@SalesTaxAmt		money,
+			@PayPlan			varchar(10),
+			@FinanceFeeAmt		money,
+			@PaymentAmt			money,
+			@NumPayments		smallint,
+			@DownPaymentAmt		money,
+			@FinanceCompany		varchar(10),
+			@FinanceNum			varchar(10),
+			@FinancedAmt		money,
+			@FirstBillDt		smalldatetime,
+			@GrossProfitAmt		money,
+			@NetProfitAmt		money,
+			@ReleaseDt			smalldatetime,
+			@ContractCostAmt	money,
+			@DiscountAmt		money,
+			@DisbursementAmt	money,
+			@FundingToEntityAmt	money,
+			@ReserveAmt			money,
+			@EffectiveDt		smalldatetime,
+			@Cancelled			char(1),
+			@CancelDt			smalldatetime,
+			@InstallmentsMade	smallint,
+			@LastPaymentRcvdDt	smalldatetime;
+
+----------------------------
+-- variables nto defined 
+DECLARE @VolunteerId_Open	int = 1,
+		@VolunteerId_Sale	int = 1,
+		@VolunteerId_TO		int = 1,
+		@VolunteerId_TA		int = 1,
+		@FinanceId			int	= 1;
+
+	DECLARE Contract_cursor CURSOR FOR
+	
+	SELECT 	AppNum, AcctNum, ContractNum, SaleDt, RateDt, Vin, Make, Model, Year,
+	NewOrUsed, FirstName, LastName, InsuredName, Address, City, State, Zip, Phone,
+	Phone2, Email, Salesman, Admin, CoverageType, Coverage, TermMonth, TermMiles,
+	Deduct, Class, PurchOdom, ExpOdom, TotalPremiumAmt, SalesTaxAmt, PayPlan,
+	FinanceFeeAmt,	PaymentAmt, NumPayments, DownPaymentAmt, FinanceCompany, FinanceNum, FinancedAmt,
+	FirstBillDt, GrossProfitAmt, NetProfitAmt, ReleaseDt, ContractCostAmt, DiscountAmt, DisbursementAmt,
+	FundingToEntityAmt, ReserveAmt, EffectiveDt, ExpireDt, Cancelled, CancelDt, InstallmentsMade,
+	LastPaymentRcvdDt
+	FROM [PrivateReserve].[Acct].[Acct];
+
+	OPEN Contract_cursor;
+	
+	FETCH NEXT FROM Contract_cursor INTO
+	@AppNum, @AcctNum, @ContractNum, @SaleDt, @RateDt, @Vin, @Make, @Model, @Year,
+	@NewOrUsed, @FirstName, @LastName, @InsuredName, @Address, @City, @State, @Zip, @Phone,
+	@Phone2, @Email, @Salesman,	@Admin, @CoverageType, @Coverage, @TermMonth, @TermMiles,
+	@DeductAmt, @Class,	@PurchOdom,	@ExpOdom, @TotalPremiumAmt,	@SalesTaxAmt, @PayPlan,
+	@FinanceFeeAmt,	@PaymentAmt, @NumPayments, @DownPaymentAmt,	@FinanceCompany, @FinanceNum, @FinancedAmt,
+	@FirstBillDt, @GrossProfitAmt, @NetProfitAmt, @ReleaseDt, @ContractCostAmt, @DiscountAmt, @DisbursementAmt,
+	@FundingToEntityAmt, @ReserveAmt, @EffectiveDt,	@ExpireDt, @Cancelled, @CancelDt, @InstallmentsMade,
+	@LastPaymentRcvdDt;
+
+	WHILE @@FETCH_STATUS = 0   
+	BEGIN   
+		-- ContractId,
+
+/*
+	INSERT [Car].[Contract] (
+	AppNum, ContractNum, VolunteerId_Open, VolunteerId_Sale, VolunteerId_TO, VolunteerId_TA, InsuredName, FirstName, LastName,
+	Address, City, State, Zip, Phone, Phone2, Email, SaleDt, RateDt, Vin, Make, Model, Year, NewOrUsed,
+	Coverage, Term, TermMonth, TermMiles, DeductAmt, Class, Admin, CoverageType, FinanceId, PurchOdom, ExpOdom,
+	ExpireDt, TotalPremiumAmt, SalesTaxAmt,	PayPlan, FinanceFeeAmt,
+	PaymentAmt, NumPayment, DownPaymentAmt,
+	FinanceCompany, FinanceNum, FinancedAmt, FirstBillDt, ContractCostAmt,
+	DiscountAmt, DisbursementAmt, FundingToEntityAmt, ReserveAmt, EffectiveDt,
+	InstallmentsMade, LastPaymentRcvdDt, 
+	IsCancelled, CancelDt )
+
+-- RetailPlusPlusAmt,RetailAmt, CustomerCostAmt,
+-- PaidInFull, PayPlanType, GrossProfitAmt, NetProfitAmt, ReleaseDt,  CancelReturnAmt)
+-- @AcctNum
+
+	VALUES ( @AppNum, @ContractNum, @VolunteerId_Open, @VolunteerId_Sale, @VolunteerId_TO, @VolunteerId_TA, @InsuredName, @FirstName, @LastName,
+			@Address, @City, @State, @Zip, @Phone, @Phone2, @Email,	@SaleDt, @RateDt, @Vin, @Make, @Model, @Year, @NewOrUsed,
+			@Coverage, 'Term', @TermMonth, @TermMiles, @DeductAmt, @Class, @Admin, @CoverageType, @FinanceId, @PurchOdom, @ExpOdom,
+			@ExpireDt, @TotalPremiumAmt, @SalesTaxAmt, @PayPlan, @FinanceFeeAmt,
+			@PaymentAmt, @NumPayments, @DownPaymentAmt,
+			@FinanceCompany, @FinanceNum, @FinancedAmt, @FirstBillDt, @ContractCostAmt,
+			@DiscountAmt, @DisbursementAmt, @FundingToEntityAmt, @ReserveAmt, @EffectiveDt,
+			@InstallmentsMade, @LastPaymentRcvdDt, 
+			@Cancelled, @CancelDt );
+*/
+IF NOT EXISTS (SELECT * FROM [Car].[Car] WHERE Vin = @Vin)
+	Print @Vin;
+			
+/*
+			 @DeductAmt,
+
+			@Salesman,
+		     	  
+		 @GrossProfitAmt, @NetProfitAmt, @ReleaseDt,   
+		  	 
+		)
+*/
+
+	FETCH NEXT FROM Contract_cursor INTO
+	@AppNum, @AcctNum, @ContractNum, @SaleDt, @RateDt, @Vin, @Make, @Model, @Year,
+	@NewOrUsed, @FirstName, @LastName, @InsuredName, @Address, @City, @State, @Zip, @Phone,
+	@Phone2, @Email, @Salesman,	@Admin, @CoverageType, @Coverage, @TermMonth, @TermMiles,
+	@DeductAmt, @Class,	@PurchOdom,	@ExpOdom, @TotalPremiumAmt,	@SalesTaxAmt, @PayPlan,
+	@FinanceFeeAmt,	@PaymentAmt, @NumPayments, @DownPaymentAmt,	@FinanceCompany, @FinanceNum, @FinancedAmt,
+	@FirstBillDt, @GrossProfitAmt, @NetProfitAmt, @ReleaseDt, @ContractCostAmt, @DiscountAmt, @DisbursementAmt,
+	@FundingToEntityAmt, @ReserveAmt, @EffectiveDt,	@ExpireDt, @Cancelled, @CancelDt, @InstallmentsMade,
+	@LastPaymentRcvdDt;
+
+	END   
+
+	CLOSE Contract_cursor;
+	DEALLOCATE Contract_cursor;
+
+END
+
+-- select * from [PrivateReserve].[Acct].[Acct]
+
+
+
+
+
+-- select * from [Car].[Contract]
 
 -- select * from [Contract].[PayPlanTerm]
 
@@ -2169,21 +2384,21 @@ GO
 -- drop table [].[GravyMod_Term]
 -----------------------------------------
 
-CREATE TABLE [Pay].[GravyMod_PayPlanTermMonth]
+CREATE TABLE [Pay].[GravyMod_PayPlanNumPayment]
 (
 	[PayPlanId]			[int]		NOT NULL,
-	[TermMonth]			[smallint]	NOT NULL,
+	[NumPayment]		[smallint]	NOT NULL,
 	[Subtract]			[money]		NOT NULL
 FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
 -- FOREIGN KEY ([PayPlanTerm]) REFERENCES [Contract].[Term] (Months)
-FOREIGN KEY ([TermMonth]) REFERENCES [Contract].[TermMonth] (TermMonth)
+FOREIGN KEY ([NumPayment]) REFERENCES [Contract].[NumPayment] (NumPayment)
 );
 GO
 
-CREATE UNIQUE INDEX PK_GravyMod_PayPlanTermMonth ON [Pay].[GravyMod_PayPlanTermMonth] ( [PayPlanId], [TermMonth] );
+CREATE UNIQUE INDEX PK_GravyMod_PayPlanNumPayment ON [Pay].[GravyMod_PayPlanNumPayment] ( [PayPlanId], [NumPayment] );
 GO
 
-INSERT [Pay].[GravyMod_PayPlanTermMonth] ( PayPlanId, TermMonth, Subtract )
+INSERT [Pay].[GravyMod_PayPlanNumPayment] ( PayPlanId, NumPayment, Subtract )
 SELECT 1, 0,   0 union
 SELECT 1, 6,   0 union
 SELECT 1, 9,  10 union
