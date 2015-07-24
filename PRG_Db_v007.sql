@@ -188,6 +188,9 @@ IF OBJECT_ID(N'udf_TitleCase') IS NOT NULL
 	DROP FUNCTION dbo.udf_TitleCase;
 GO
 
+---------------------------------------
+-- [dbo].[udf_TitleCase]
+-----------------------------------------
 CREATE  FUNCTION [dbo].[udf_TitleCase] (@InputString varchar(4000) )
 RETURNS VARCHAR(4000)
 AS
@@ -220,6 +223,17 @@ END
 GO
 
 ---------------------------------------
+-- [dbo].[udf_date]
+-----------------------------------------
+CREATE FUNCTION [dbo].[udf_date] ( @Dt smalldatetime )
+	RETURNS smalldatetime
+AS
+BEGIN
+	RETURN (cast(floor(cast(@Dt as float)) as smalldatetime));
+END
+GO
+
+---------------------------------------
 --
 -----------------------------------------
 CREATE TABLE [Legend].[TimeZone]
@@ -248,7 +262,7 @@ SELECT 'PST','Pacific Standard Time', -8
 -----------------------------------------
 CREATE TABLE [PRG].[Legend].[State]
 (
-	[State]		[dbo].[State]	NOT NULL,
+	[State]		[dbo].[State]		NOT NULL,
 	[Name]		[varchar](25)		NOT NULL,
 	[TimeZone]	[char](4)			NOT NULL,
 PRIMARY KEY (State),
@@ -357,10 +371,41 @@ FROM [Joe].[legend].[FirstName]
 WHERE BadName = 'N'
   AND LEN(FirstName) <= 20
   AND Cnt >= 15
+  and FirstName not in ('Accounting','Adm','Admin','Administrative','Advanced','Nguyen','The')
 ORDER BY Cnt DESC;
 GO
 
+
+select top 1000 * from Car.Car
+select * from Car.Contract
+
+select * from Car.MakeInclude
+
+select * from Legend.State
+
+select * from dnc.State
+
+
+
+/*
+DELETE [Legend].[FirstName]
+WHERE 
+GO
+
+select * from [Legend].[FirstName]
+where Gender = 'U'
+  and FirstName like '%a'
+order by cnt desc
+
+select Gender, sum(Cnt) SumCnt
+from [Legend].[FirstName]
+group by Gender
+*/
+
 -- select * from [Legend].[FirstName] where Gender = 'U' order by cnt desc;
+
+-- select * from [Legend].[FirstName] where len(FirstName) = 2 order by cnt desc -- need to figure this one out
+-- select * from [Legend].[FirstName] where len(FirstName) = 3 order by cnt desc -- need to figure this one out
 
 update [Legend].[FirstName] SET Gender = 'M' WHERE FirstName in ('John','Mike','Mark','Matt','James','Jim','David','Robert','Richard','Steve','Paul','Thomas','Tom','Paul','Gary',
 																 'Scott','Bill','Charles','Jeff','Michael','Bob','Brian','William','Larry','Joe','Kevin','Joseph','George',
@@ -368,12 +413,114 @@ update [Legend].[FirstName] SET Gender = 'M' WHERE FirstName in ('John','Mike','
 																 'Ken','Bruce','Eric','Donald','Terry','Jack','Edward','Randy','Ronald','Kenneth','Jeffrey','Ed',
 																 'Doug','Keith','Roger','Alan','Patrick','Craig','Tony','Anthony','Jason','Fred','Todd','Wayne','Jay',
 																 'Douglas','Christopher','Timothy','Carl','Lee','Brad','Andrew','Ray','Barry','Gregory','Chuck','Howard',
-																 'Matthew','Martin','Gerald','Rob','Phil','Jon','Ralph','Al','Walter','Henry','Allen','Raymond','Philip','Lawrence');
+																 'Matthew','Martin','Gerald','Rob','Phil','Jon','Ralph','Al','Walter','Henry','Allen','Raymond','Philip','Lawrence',
+																 'Art','Billy','Brent','Carlton','Sam','Dean','Andy','Ted','Harry','Harold','Roy','Joel','Ben','Bryan','Rich',
+																 'Jonathan','Arthur','Louis','Nick','Alex','Marc','Sean','Russell','Phillip','Jose','Shawn','Ryan','Danny','Victor','Pete',
+																 'Albert','Adam','Neil','Norman','Dick','Gordon','Charlie','Kent','Aaron','Stan','Kurt','Chad','Carlos',
+																 'Randall','Eugene','Leonard','Rodney','Jimmy','Bobby','Stanley','Stuart','Allan','Samuel','Warren','Troy',
+																 'Marty','Eddie','Marvin','Rod','Curtis','Vincent','Jeremy','Bernard','Earl','Brett','Russ','Karl','Juan',
+																 'Kirk','Nicholas','Duane','Frederick','Justin','Darrell','Tommy','Nathan','Guy','Lance','Benjamin',
+																 'Bradley','Leo','Luis','Lou','Ross','Micheal','Josh','Jesse','Ernest','Kyle','Edwin','Harvey',
+																 'Mario','Jeffery','Gregg','Johnny','Ronnie','Lloyd','Max','Derek','Leon','Neal','Lois','Jerome','Herbert',
+																 'Shane','Vince','Mitchell','Alfred','Lewis','Hugh','Jo','Ian','Will','Darren','Cliff','Brandon','Arnold',
+																 'Travis','Dwight','Alexander','Curt','Mitch','Melvin','Les','Theodore','Kenny','Erik','Joshua','Gerry',
+																 'Jorge','Wade','Darryl','Clark','Hal','Roland','Calvin','Grant','Marshall','Stewart','Clifford','Daryl',
+																 'Nelson','Rex','Manuel','Gilbert','Oscar','Antonio','Ernie','Wesley','Maurice','Wes','Marcus','Simon',
+																 'Byron','Clyde','Dwayne','Marion','Clay','Clarence','Gerard','Jacob','Alvin','Milton','Hank','Vernon','Bart',
+																 'Bernie','Ali','Casey','Andre','Chip','Ira','Leroy','Herb','Floyd','Miguel','Morris','Ivan','Garry','Bud',
+																 'Evan','Clint','Seth','Corey','Lonnie','Herman','Lyle','Fernando','Cory','Joey','Hector','Raul','Jaime',
+																 'Jake','Lester','Blake','Norm','Ricardo','Colin','Mickey','Geoffrey','Sal','Edgar','Claude','Clayton','Roberto',
+																 'Willie','Adrian','Bert','Rudy','Len','Derrick','Sheldon','Malcolm','Walt','Skip','Bret','Hans','Franklin','Luke',
+																 'Dominic','Gus','Gil','Laurence','Ruben','Spencer','Geoff','Francisco','Mohammad','Murray','Javier','Mathew','Terrence',
+																 'Buddy','Denis','Chester','Felix','Wallace','Ramon','Julio','Myron','Tyler','Vic','Lowell','Wilson','Jared','Sergio',
+																 'Graham','Oliver','Marco','Ned','Toby','Eduardo','Pedro','Wendell','Trevor','Manny','Mohammed','Armando','Jesus',
+																 'Sid','Robbie','Raj','Owen','Dustin','Damon','Wally','Elliot','Vern','Darrel','Edmund','Randolph','Eli','Rodger','Enrique',
+																 'Benny','Tod','Omar','Dirk','Russel','Mick','Willard','Harris','Burt','Stephan','Alfredo','Angelo','Shaun','Jess',
+																 'Abraham','Reginald','Lane','Preston','Nate','Monte','Conrad','Pierre','Trent','Terrance','Isaac','Miles','Austin',
+																 'Ward','Reggie','Salvatore','Randal','Ty','Monty','Bo','Virgil','Mack','Elliott','Doyle','Erick','Terence',
+																 'Boyd','Elmer','Bradford','Garrett','Cesar','Irving','Forrest','Duncan','Chet','Lenny','Brendan','Irwin','Blaine',
+																 'Vance','Burton','Scot','Winston','Carter','Jerald','Sherman','Leland','Lindsey','Stefan','Dallas','Pablo','Saul','Reid',
+																 'Julius','Trey','Nathaniel','Fredrick','Bryant','Ernesto','Abdul','Bryce','Archie','Abe','Lamar','Dominick','Harlan',
+																 'Hugo','Bruno','Sanjay','Syed','Ravi','Woody','Homer','Gustavo','Freddie','Hubert','Dino','Boris',
+																 'Cody','Alton','Roderick','Anderson','Erwin','Andres','Alejandro','Berry','Otto','Tyrone','Barney','Frederic',
+																 'Ashok','Amir','Garth','Rudolph','Edmond','Luther','Fritz','Dewayne','Alfonso','Mason','Johnathan','Rocco','Dexter',
+																 'Thom','Lionel','Lorenzo','Ethan','Robb','Mohamed','Noah','Norbert','Nigel','Tad','Emmanuel','Zachary','Otis','Taylor','Emil',
+																 'Louie','Vijay','Ramesh','Heath','Ahmed','Dewey','Lars','Brain','Parker','Sterling','Lanny','Duke','Klaus','Marcel',
+																 'Vladimir','Buck','Zack','Emilio','Stu','Wilbur','Salvador','Tomas','Roman','Orlando','Carlo','Jonathon','Harrison','Thad',
+																 'Gavin','Philippe','Dudley','Gino','Damian','Gerardo','Cole','Rolf','Devin','Jed','Zach','Moses','Nicolas','Rolando',
+																 'Daren','Alec','Irvin','Nolan','Reuben','Delbert','Collin','Freddy','Donn','Gill','Reza','Bennie','Hassan','Igor','Moe',
+																 'Rajesh','Lucas','Nat','Emmett','Seymour','Robby','Diego','Felipe','Derick','Raphael','Mat','Clive','Wolfgang','Emanuel',
+																 'Brant','Bryon','Marv','Marlon','Nell','Donovan','Charley','Charley','Riley','Quentin','Wilfred','Xavier','Jerrold','Rodolfo',
+																 'Aldo','Zane','Cornelius','Kieth','Ford','Serge','Beau','Theo','Wright','Logan','Maury','Jeffry','Earnest','Nestor','Mitchel','Buzz','Newton',
+																 'Hamid','Willy','Muhammad','Lincoln','Bharat','Norris','Orville','Santiago','Moshe','Marcelo','Cyrus','Dion','Rhett',
+																 'Prakash','Hiroshi','Mo','Giovanni','Rakesh','Deepak','Quinn','Rodrigo','Phill','Grover','Franco','Forest','Sylvester',
+																 'Rajiv','Markus','Rosario','Tucker','Jerold','Rubin','Malcom','Kraig','Jefferson','Leonardo','Fredric','Rufus','Brice','Merlin','Loyd',
+																 'Everett','Cameron','Morgan','Reed','Clinton','Darrin','Miller','Sanford','Brady','Vaughn','Darwin','Lew','Hunter','Galen','Horace',
+																 'Ahmad','Suresh','Gabe','Cedric','Amos','West','Solomon','Nima');
+
 
 update [Legend].[FirstName] SET Gender = 'F' WHERE FirstName in ('Mary','Linda','Susan','Karen','Lisa','Barbara','Nancy','Carol','Kathy','Jennifer','Donna','Patricia','Sharon',
 																 'Debbie','Diane','Michelle','Judy','Ann','Sandra','Laura','Elizabeth','Cindy','Julie','Amy','Kelly','Sue',
 																 'Janet','Brenda','Lynn','Deborah','Cheryl','Lori','Pam','Debra','Jane','Cathy','Christine','Denise','Sandy',
-																 'Kathleen','Maria');
+																 'Kathleen','Maria','Betty','Beverly','Bridget','Joan','Cynthia','Margaret','Melissa','Jan','Carolyn','Stephanie',
+																 'Pamela','Tracy','Connie','Angela','Joyce','Tammy','Rebecca','Beth','Teresa','Paula','Anne','Wendy','Janice','Leslie',
+																 'Tina','Gail','Shirley','Sherry','Dawn','Jill','Jackie','Bonnie','Sarah','Peggy','Diana','Heather','Kimberly','Marilyn',
+																 'Ruth','Martha','Becky','Andrea','Dana','Judith','Joanne','Catherine','Ellen','Helen','Theresa','Laurie',
+																 'Marie','Vicki','Sheila','Suzanne','Patty','Anna','Shannon','Kay','Gloria','Sally','Rhonda','Renee','Dorothy','Rita',
+																 'Jessica','Rose','Michele','Virginia','Katherine','Valerie','Nicole','Alice','Anita','Monica','Sara','Christina',
+																 'Maureen','Francis','Phyllis','Stacy','Gina','Amanda','Darlene','Wanda','Jeanne','Angie','Carla','Holly','Rachel','Eileen',
+																 'Liz','Joann','Kathryn','Carrie','Marsha','Melanie','Jenny','Marcia','Annette','Elaine','Colleen','Stacey','Joy','Victoria',
+																 'Shelly','Penny','Charlotte','Julia','Jody','Carmen','Sylvia','Erin','Heidi','Norma','Deb','Patti','Doris','Emily',
+																 'Dianne','Sheryl','Vickie','Louise','Yvonne','Christy','Claudia','Toni','Evelyn','Katie','Barb','April','Jacqueline','Frances','Dee',
+																 'Irene','Roberta','Melinda','Gayle','Sherri','Vicky','Fran','Charlene','Kate','Grace','Caroline','June','Regina','Marlene','Crystal',
+																 'Betsy','Lynne','Lauren','Arlene','Rosemary','Lorraine','Tracey','Alicia','Kristen','Allison','Tara','Rene','Veronica',
+																 'Tanya','Kristin','Jodi','Tiffany','Audrey','Jeanette','Shelley','Sheri','Natalie','Glenda','Deanna',
+																 'Tonya','Ashley','Tamara','Vivian','Danielle','Nina','Margie','Susie','Angel','Lucy','Marianne','Maryann','Loretta','Eva',
+																 'Claire','Amber','Lynda','Erica','Marjorie','Megan','Molly','Maggie','Ginger','Loren','Vanessa','Ana','Alison',
+																 'Yolanda','Annie','Melody','Noel','Kristi','Rosa','Julian','Trish','Shari','Belinda','Patsy','Cecil','Jeannie','Bobbie',
+																 'Gale','Sonia','Joanna','Pauline','Esther','Faye','Roxanne','Kristine','Tricia','Cheri','Leah','Mona','Robyn',
+																 'Gretchen','Courtney','Lydia','Mindy','Karla','Samantha','Dolores','Juanita','Eleanor','Georgia','Tami','Sonya',
+																 'Delores','Kristy','Marla','Christie','Jana','Doreen','Brandy','Nora','Alberto','Edith','Paulette','Lillian','Candace','Darla',
+																 'Shelly','Penny','Charlotte','Julia','Jody','Carmen','Sylvia','Erin','Heidi','Norma','Deb','Patti','Doris','Emily',
+																 'Lana','Dianna','Priscilla','Sandi','Candy','Marge','Karin','Katrina','Nikki','Lynette','Cecilia','Florence','Yvette','Kelli',
+																 'Lyn','Maxine','Traci','Sabrina','Kara','Sherrie','Misty','Edna','Mandy','Clara','Lorie','Meredith','Emma','Jennie',
+																 'Trudy','Kristina','Joni','Josephine','Naomi','Erika','Judi','Nadine','Candice','Olga','Rochelle','Ronda','Trisha',
+																 'Harriet','Janine','Ginny','Hope','Patrice','Elena','Debby','Carroll','Monique','Gladys','Lora','Iris','Krista','Adrienne',
+																 'Leigh','Kari','Janie','Marcy','Kelley','Jen','Dina','Myra','Felicia','Bernadette','Brooke','Rosie','Vera','Jayne','Bernice',
+																 'Alma','Margo','Wilma','Lindsay','Susanne','Kaye','Stella','Polly','Cassandra','Lucille','Faith','Francine','Shelia',
+																 'Kerri','Kathie','Jodie','Maryanne','Cherie','Jeannette','Dena','Lesley','Jeanie','Cara','Thelma','Trina','Dora','Kellie',
+																 'Laurel','Mildred','Ingrid','Ramona','Camille','Sonja','Celeste','Dixie','Shelby','Peg','Sunny','Madeline','Bev','Paige',
+																 'Meg','Christi','Darcy','Barbra','Debi','Kathi','Jeanine','Beatrice','Rosemarie','Libby','Missy','Lea','Isabel','Hilda',
+																 'Helene','Mimi','Kirsten','Hazel','Kristie','Josie','Christa','Marta','Kendra','Aimee','Tammie','Eve','Ida',
+																 'Alexis','Noreen','Fay','Grady','Katy','May','Dottie','Millie','Keri','Cristina','Olivia','Marcie','Therese','Abby','Janette',
+																 'Stacie','Cindi','Lauri','Rosalie','Rachael','Lorrie','Celia','Alexandra','Marci','Alisa','Whitney','Natasha','Lena',
+																 'Lena','Aubrey','Israel','Elise','Desiree','Sophia','Ethel','Kitty','Marti','Elisa','Arnie','Mari','Rena','Tracie','Deana','Cyndi','Ellie',
+																 'Leanne','Cathleen','Agnes','Leticia','Daisy','Sondra','Brandi','Jocelyn','Jeannine','Antoinette','Coleen','Ilene','Amelia',
+																 'Adriana','Clare','Jacquelyn','Terrie','Lily','Elsa','Lupe','Johanna','Lourdes','Corinne','Suzie','Marybeth','Suzy','Raquel','Suzette',
+																 'Daphne','Marylou','Bethany','Lara','Deanne','Margarita','Hillary','Debora','Lola','Rachelle','Lucia','Marguerite','Rosanne','Elisabeth',
+																 'Lucinda','Shauna','Luz','Mia','Jenifer','Liza','Hannah','Dona','Nicki','Debbi','Ursula','Jenna','Staci','Lorena','Helena','Claudette',
+																 'Marcella','August','Kimberley','Leona','Page','Karyn','Dominique','Suzan','Clair','Dolly','Shiela','Tasha','Cathie','Stefanie',
+																 'Cassie','Janelle','Marina','Donnie','Marian','Ruby','Bobbi','Leann','Silvia','Shawna','Adele','Cherry','Ella','Bertha','Pearl','Sharron',
+																 'Lila','Sister','Tammi','Nanette','Marisa','Nichole','Hilary','Jacque','Marissa','Jules','Bridgette','Mara','Ming','Lindy','Chandra',
+																 'Cecelia','Deirdre','Shana','Ivy','Armand','Jude','Caryn','Shanna','Sheree','Lilly','Janna','Glenna','Deena','Dot','Gigi','Pattie','Loraine',
+																 'Freda','Nellie','Wendi','Margret','Violet','Ariel','Angelica','Velma','Mercedes','Miranda','Penelope','Ester','Mina','Lorri','Flora',
+																 'Rebekah','Valarie','Chrissy','Carolina','Roseann','Vikki','Saundra','Melisa','Roseanne','Winnie','Tabitha','Nicky','Lilian','Juliet',
+																 'Cristy','Brigitte','Debrah','Jeniffer','Charity','Erma','Rosalyn','Susana','Katharine','Maryellen','Lesa','Niki','Dorthy','Shanon',
+																 'Tori','Cathryn','Estelle','Bridgett','Charmaine','Bettie','Zoe','Lynnette','Isabelle','Susanna','Virgina','Kasey','Jasmine','Krystal','Leeann',
+																 'Lina','Greta','Ladonna','Nadia','Genevieve','Allyson','Sallie','Angelina','Deann','Simone','Mellisa','Gabrielle','Sophie','Li','Robbin',
+																 'Carrol','Corrine','Justine','Cleo','Tia','Geneva','Cecile','Gaye','Juli','Deidre','Summer','Alyssa','Julianne','Rhoda','Patrica',
+																 'Carey','Geraldine','Blair','Laverne','Elsie','Bonita','Antonia','Verna','Bea','Ava','Gayla','Gena','Garcia','Hanna','Tonia','Alisha','Audra',
+																 'Luisa','Irina','Krishna','Reba','Benita','Alana','Leila','Monika','Tana','Elissa','Serena','Georgina','Petra','Eugenia','Dara','Nicola',
+																 'Alissa','Alberta','Gabriela','Tamra','Juliana','Rhea','Leanna','Henrietta','Francesca','Karina','Rosanna','Edwina','Ezra','Shea','Vonda',
+																 'Danna','Louisa','Ericka','Mayra','Carmela','Kayla','Mahendra','Thea','Charla','Camilla','Bettina','Dayna','Fiona','Maya','Lidia','Helga',
+																 'Keisha','Gilda','Natalia','Nola','Della','Chelsea','Tisha','Selena','Daniela','Sofia','Mellissa','Marva','Lilia','Sasha','Elva',
+																 'Tera','Rona','Juana','Madonna','Liliana','Marita','Minerva','Elvira','Malinda','Athena','Marcela','Terra','Akira','Jeanna','Tamera',
+																 'Deidra','Lela','Lela','Althea','Roxanna','Jena','Tatiana','Sheena','Eliza','Fatima','Lia','Donita','Angelia','Twila','Gisela','Dorothea',
+																 'Sabina','Tessa','Anastasia','Selina','Sharla','Melva','Teressa','Andra','Asa','Frieda','Estella','Lolita','Bella','Asha','Selma','Valeria',
+																 'Alexandria','Mira','Rebeca','Suzanna','Kira','Adela','Lita','Roma','Babara','Freida','Roxana','Josefina','Felecia','Cinthia','Valencia',
+																 'Twyla','Zina','Uma','Veena','Laila','Larisa','Paulina','Sunita','Pricilla','Mika','Corinna','Magdalena','Irena','Rosetta','Chanda','Shonda',
+																 'Lida','Tressa','Isabella','Daniella','Katina','Venessa','Lula','Odessa','Rebbeca','Alexia','Augusta','Cecila','Terresa','Samatha','Rosana',
+																 'Zelma','Carola','Leda','Rosella');
 
 /*
 select max(len(FirstName)) from [Legend].[FirstName]
@@ -665,25 +812,25 @@ GO
 --***************************************
 --
 --***************************************
-CREATE Schema [Volunteer];
+CREATE Schema [Employee];
 GO
 
-CREATE RULE [Volunteer].[SSN] 
+CREATE RULE [Employee].[SSN] 
 AS
 @SSN like '[0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]'
 GO
 
-CREATE TYPE [Volunteer].[SSN] FROM [char](11) NOT NULL
+CREATE TYPE [Employee].[SSN] FROM [char](11) NOT NULL
 GO
 
-sp_bindrule '[Volunteer].[SSN]', '[Volunteer].[SSN]';
+sp_bindrule '[Employee].[SSN]', '[Employee].[SSN]';
 GO
 
 
 --------------------------------------------------------------------------------------------
 --  don't know if this pay rate hour thing is going to be used - maybe a modeling excercise
 --------------------------------------------------------------------------------------------
-CREATE TABLE [Volunteer].[HrRate]
+CREATE TABLE [Employee].[HrRate]
 (
 	[HrRateId]	[int]			NOT NULL	IDENTITY(1,1),
 	[Name]		[varchar](30)	NOT NULL	UNIQUE,
@@ -692,57 +839,57 @@ PRIMARY KEY ([HrRateId])
 ) ON [PRIMARY]
 GO
 
-SET IDENTITY_INSERT [Volunteer].[HrRate] ON;
-INSERT [Volunteer].[HrRate] (HrRateId, Name, HrPayAmt)
+SET IDENTITY_INSERT [Employee].[HrRate] ON;
+INSERT [Employee].[HrRate] (HrRateId, Name, HrPayAmt)
 SELECT 1, 'Probation', 10 UNION
 SELECT 2, 'Serf', 11 UNION
 SELECT 3, 'Peasant', 12 UNION
 SELECT 4, 'Knight', 13 UNION
 SELECT 5, 'Manager/Lord/Noble', 14
-SET IDENTITY_INSERT [Volunteer].[HrRate] OFF;
+SET IDENTITY_INSERT [Employee].[HrRate] OFF;
 GO
 
 ---------------------------------------
 --
 -----------------------------------------
-CREATE TABLE [Volunteer].[Role]
+CREATE TABLE [Employee].[Role]
 (
 	[RoleId]			[int]			NOT NULL	IDENTITY(1,1),
 	[Role]				[varchar](30)	NOT NULL	UNIQUE,
 	[DefaultHrRateId]	[int]			NULL
 PRIMARY KEY ([RoleId])
-FOREIGN KEY ([DefaultHrRateId]) REFERENCES [Volunteer].[HrRate] (HrRateId)
+FOREIGN KEY ([DefaultHrRateId]) REFERENCES [Employee].[HrRate] (HrRateId)
 ) ON [PRIMARY]
 GO
 
-SET IDENTITY_INSERT [Volunteer].[Role] ON;
-INSERT [Volunteer].[Role] (RoleId, Role, DefaultHRRateId)
+SET IDENTITY_INSERT [Employee].[Role] ON;
+INSERT [Employee].[Role] (RoleId, Role, DefaultHRRateId)
 SELECT 1, 'Screener', 1 UNION
 SELECT 2, 'Manager', 5 UNION
 SELECT 3, 'Closer', NULL UNION
 SELECT 4, 'T.O.', NULL
-SET IDENTITY_INSERT [Volunteer].[Role] OFF;
+SET IDENTITY_INSERT [Employee].[Role] OFF;
 GO
 
-CREATE TABLE [Volunteer].[TaxClass]
+CREATE TABLE [Employee].[TaxClass]
 (
 	[TaxClass]			[varchar](10)		NOT NULL UNIQUE,
 PRIMARY KEY ([TaxClass])
 );
 GO
 
-INSERT [Volunteer].[TaxClass] (TaxClass)
+INSERT [Employee].[TaxClass] (TaxClass)
 select 'W2' UNION
 select '1099';
 GO
 
 ---------------------------------------
--- drop TABLE [Volunteer].[Volunteer]
+-- drop TABLE [Employee].[Employee]
 -----------------------------------------
-CREATE TABLE [Volunteer].[Volunteer]
+CREATE TABLE [Employee].[Employee]
 (
-	[VolunteerId]		[int]				NOT NULL	IDENTITY(1,1),
-	[SSN]				[Volunteer].[SSN]	NOT NULL	UNIQUE,
+	[EmployeeId]		[int]				NOT NULL	IDENTITY(1,1),
+	[SSN]				[Employee].[SSN]	NOT NULL	UNIQUE,
 	[TaxClass]			[varchar](10)		NOT NULL,
 	[RoleId]			[int]				NOT NULL,
 	[HrRateId]			[int]				NOT NULL,
@@ -755,64 +902,98 @@ CREATE TABLE [Volunteer].[Volunteer]
 	[City]				[varchar](30)		NULL,
 	[State]				[State]				NULL,
 	[Zip]				[varchar](10)		NULL,
-PRIMARY KEY ([VolunteerId]),
-FOREIGN KEY ([TaxClass]) REFERENCES [Volunteer].[TaxClass] (TaxClass),
-FOREIGN KEY ([RoleId]) REFERENCES [Volunteer].[Role] (RoleId),
-FOREIGN KEY ([HrRateId]) REFERENCES [Volunteer].[HrRate] (HrRateId),
+PRIMARY KEY ([EmployeeId]),
+FOREIGN KEY ([TaxClass]) REFERENCES [Employee].[TaxClass] (TaxClass),
+FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId),
+FOREIGN KEY ([HrRateId]) REFERENCES [Employee].[HrRate] (HrRateId),
 FOREIGN KEY ([HireDt]) REFERENCES [Legend].[Day] (Dt)
 );
 GO
 
-SET IDENTITY_INSERT [Volunteer].[Volunteer] ON;
-INSERT [Volunteer].[Volunteer] (VolunteerId, SSN, TaxClass, RoleId, HrRateId, FirstName, HireDt)
+SET IDENTITY_INSERT [Employee].[Employee] ON;
+INSERT [Employee].[Employee] (EmployeeId, SSN, TaxClass, RoleId, HrRateId, FirstName, HireDt)
+select 0, '000-00-0000', '1099', 3, 5, 'House',  '2015-04-01' union
 select 1, '123-45-6789', '1099', 3, 5, 'Tawney', '2015-04-01' union
 select 2, '234-12-3456', '1099', 1, 1, 'Guz Jr', '2015-04-01' union
 SELECT 3, '566-89-8469', '1099', 2, 5, 'Chainz', '2015-04-01' union
-select 4, '123-45-6798', 'W2', 1, 2, 'Prego', '2015-04-01'
-SET IDENTITY_INSERT [Volunteer].[Volunteer] OFF;
+select 4, '123-45-6798', 'W2', 1, 2, 'Prego', '2015-04-01' union
+select 5, '455-89-4567', '1099', 3, 5, 'Dan', '2015-04-01' -- union
+SET IDENTITY_INSERT [Employee].[Employee] OFF;
 
--- select * from [Volunteer].[Volunteer]
+-- select * from [Employee].[Employee]
 
 /*
 select e.FirstName, o.Role, r.Name
-from [Volunteer].[Volunteer] r, [Volunteer].[Role] o, [Volunteer].[HrRate] r
+from [Employee].[Employee] r, [Employee].[Role] o, [Employee].[HrRate] r
 where v.RateId = r.RateId
   and v.RoleId = o.RoleId
 */
 
 ---------------------------------------
--- drop table [Volunteer].[Day]
+-- drop table [Employee].[Day]
 -----------------------------------------
-CREATE TABLE [Volunteer].[VolunteerAlias]
+CREATE TABLE [Employee].[EmployeeAlias]
 (
 	[Alias]				[varchar](30)		NOT NULL UNIQUE,
-	[VolunteerId]		[int]				NOT NULL,
-FOREIGN KEY ([VolunteerId]) REFERENCES [Volunteer].[Volunteer] (VolunteerId)
+	[EmployeeId]		[int]				NOT NULL,
+FOREIGN KEY ([EmployeeId]) REFERENCES [Employee].[Employee] (EmployeeId)
 )
 GO
 
+DECLARE	@EmployeeId_House int = 0,
+		@EmployeeId_Dan int = 5;
+
+insert [Employee].[EmployeeAlias] (Alias, EmployeeId)
+select 'Dan Phillips', @EmployeeId_Dan union
+select 'Joe Starr', 0 union
+select 'John Hillegas', 0 union
+select 'Josiah Saunders', 0 union
+select 'Justin Ramos', 0 union
+select 'Kaitlyn Reyes', @EmployeeId_House union
+select 'Melinda Russell', 0 union
+select 'PJ Ghaneian', @EmployeeId_House union
+select 'Tawney Verano', @EmployeeId_House union
+select 'Wayne White', 0
+;
+
+-- select * from [Employee].[EmployeeAlias];
+-- select * from [Employee].[Employee];
+
+/*
+select Salesman, count(*)
+from PrivateReserve.Acct.Acct
+group by Salesman
+
+select max(len(Salesman))
+from PrivateReserve.Acct.Acct
+
+select * from PrivateReserve.Acct.Acct
+where Salesman = 'Wayne Whit'
+
+*/
+
 ---------------------------------------
--- drop table [Volunteer].[Day]
+-- drop table [Employee].[Day] -- may be superflourious
 -----------------------------------------
-CREATE TABLE [Volunteer].[Day]
+CREATE TABLE [Employee].[Day]
 (
-	[VolunteerId]		[int]				NOT NULL,
+	[EmployeeId]		[int]				NOT NULL,
 	[RoleId]			[int]				NOT NULL,
 	[Dt]				[smalldatetime]		NOT NULL,
 	[StartTm]			[smalldatetime]		NOT NULL,
 	[EndTm]				[smalldatetime]		NULL,
 	[TransferCnt]		[smallint]			NULL,
 	[CloseCnt]			[smallint]			NULL
-FOREIGN KEY ([VolunteerId]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
+FOREIGN KEY ([EmployeeId]) REFERENCES [Employee].[Employee] (EmployeeId),
 FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] (Dt),
-FOREIGN KEY ([RoleId]) REFERENCES [Volunteer].[Role] (RoleId)
+FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
 );
 GO
 
 --------------------------------------------------------------------------------
 -- An employee can be/play/work as one or more roles in a day
 --------------------------------------------------------------------------------
-CREATE UNIQUE INDEX PK_VolunteerDay ON [Volunteer].[Day] ([VolunteerId], [RoleId], [Dt])
+CREATE UNIQUE INDEX PK_EmployeeDay ON [Employee].[Day] ([EmployeeId], [RoleId], [Dt])
 GO
 
 
@@ -967,13 +1148,13 @@ CREATE TABLE [Acct].[Journal]
 	[JournalId]			[int]				NOT NULL IDENTITY (1,1),
 	[ParentJournalId]	[int]				NULL,
 	[Dt]				[smalldatetime]		NOT NULL,
-	[VolunteerId]		[int]				NOT NULL,
+	[EmployeeId]		[int]				NOT NULL,
 	[Qtr]				[Acct].[Qtr]		NOT NULL,
 	[Week]				[smallint]			NOT NULL,					-- represents the week range 
 PRIMARY KEY ([JournalId]),
 FOREIGN KEY ([ParentJournalId]) REFERENCES [Acct].[Journal] ( JournalId ),
 FOREIGN KEY ([Dt]) REFERENCES [Legend].[Day] ( Dt ),
-FOREIGN KEY ([VolunteerId]) REFERENCES [Volunteer].[Volunteer] ( VolunteerId )
+FOREIGN KEY ([EmployeeId]) REFERENCES [Employee].[Employee] ( EmployeeId )
 );
 
 -----------------------------------------------
@@ -1221,7 +1402,8 @@ select 'MAYBACH' UNION
 select 'ROLLS-ROYCE' UNION
 select 'TESLA' UNION
 select 'SMART' UNION
-select 'FISKER';
+select 'FISKER' UNION
+select 'GEM';
 
 INSERT [Car].[MakeInclude] (Make)
 SELECT UPPER(Make) from Car.Make WHERE Make NOT IN (SELECT Make FROM @MakeExclude);
@@ -1388,14 +1570,14 @@ DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
 	INSERT [Car].[Car] (VIN, Make, Model, Year, IsHybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address, Address2, City, State, Zip, Odom, AddDt)
-	select top 10000 VIN, Make, Model, Year, Hybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address1, Address2, City, State, Zip, Odom, AddDt
+	select VIN, Make, Model, Year, Hybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address1, Address2, City, State, Zip, Odom, AddDt
 	from [QSM].[CarData].[Car]
-	where Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5)
-	  and Make in (SELECT [Make] FROM [PRG].[Car].[Make])
+	where Make in (SELECT [Make] FROM [PRG].[Car].[Make])	-- necessary
 	  and Year in (SELECT Year FROM [PRG].[Car].[Year])
 	  and State in (SELECT State FROM [PRG].[Legend].[State])
 -- 	  and Exclude = 'N'
-	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+	  and Phone like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'
+	  -- Model in (SELECT Model FROM [QSM].[CarData].[Car] group by Model having count(*) > 5);  -- unncessary
 
 	INSERT [Car].[Car] (VIN, Make, Model, Year, IsHybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address, Address2, City, State, Zip, AddDt)
 	select VIN, Make, Model, Year, Hybrid, Phone, Wireless, Exclude, AnswerMachine, FirstName, LastName, Address1, Address2, City, State, Zip, AddDt
@@ -1484,7 +1666,21 @@ CREATE TABLE [Car].[ContractSale]
 	[Make]			varchar(20)			NOT NULL,
 	[Model]			varchar(30)			NOT NULL,
 	[Year]			char(4)				NOT NULL,
+	[State]			[dbo].[State]		NULL
 );
+
+-- alter table [Car].[ContractSale] add State [dbo].[State]		NULL
+
+
+/*
+select c.Vin, c.State
+FROM QSM.CarData.Car c, [Car].[ContractSale] s
+where c.Vin = s.Vin
+  and c.State not in (select State from Legend.State)
+*/
+
+-- select * from Legend.State
+
 
 INSERT [Car].[ContractSale] ( Vin, Make, Model, Year)
 SELECT DISTINCT Vin, UPPER(Make), Model, Year
@@ -1499,8 +1695,20 @@ where Vin not in (select Vin from [Car].[ContractSale])
   and Vin IS NOT NULL;
 GO
 
+update [Car].[ContractSale] set State = c.State
+FROM QSM.CarData.Car c, [Car].[ContractSale] s
+where c.Vin = s.Vin
+  and c.State in (select State from Legend.State)
+
 update [Car].[ContractSale] set Make = 'MERCEDES-BENZ' where Make = 'MERCEDES BENZ';
 GO
+
+/*
+select State, count(*)
+from [Car].[ContractSale]
+group by State
+order by count(*) desc;
+*/
 
 /*
 select Make, Model, count(*)
@@ -1581,6 +1789,23 @@ GO
 --***************************************
 CREATE Schema [DNC];
 GO
+
+CREATE TABLE [DNC].[State]
+(
+	[State]		[dbo].[State]	NOT NULL	UNIQUE,
+FOREIGN KEY ([State]) REFERENCES [Legend].[State](State)
+);
+GO
+
+INSERT [DNC].[State] (State)
+SELECT State FROM [PrivateReserve].[DNC].[State]
+WHERE State IN(select State from [Legend].[State]);
+GO
+
+INSERT [DNC].[State] (State)
+select 'XX'
+
+select * from Legend.State
 
 ---------------------------------------
 --
@@ -1841,11 +2066,11 @@ CREATE TABLE [Contract].[PayPlan]
 	[Name]			varchar(30)		NOT NULL	UNIQUE,
 	[RoleId]		[int]			NOT NULL
 PRIMARY KEY (PayPlanId),
-FOREIGN KEY ([RoleId]) REFERENCES [Volunteer].[Role] (RoleId)
+FOREIGN KEY ([RoleId]) REFERENCES [Employee].[Role] (RoleId)
 );
 GO
 
-DECLARE @RoleId_Closer int = (SELECT RoleId FROM [Volunteer].[Role] WHERE Role = 'Closer');
+DECLARE @RoleId_Closer int = (SELECT RoleId FROM [Employee].[Role] WHERE Role = 'Closer');
 SET IDENTITY_INSERT [Contract].[PayPlan] ON;
 INSERT [Contract].[PayPlan] (PayPlanId, Name, RoleId)
 SELECT 1, 'Bizkit', @RoleId_Closer ;
@@ -1922,10 +2147,10 @@ CREATE TABLE [Car].[Contract]
 	[ContractId]			[int]				NOT NULL	IDENTITY(1,1),
 	[AppNum]				[varchar](20)		NOT NULL,	-- likely oughta be unique
 	[ContractNum]			[varchar](20)		NULL,	-- value that isn't always there
-	[VolunteerId_Open]		[int]				NULL,
-	[VolunteerId_Sale]		[int]				NULL,
-	[VolunteerId_TO]		[int]				NULL,
-	[VolunteerId_TA]		[int]				NULL,
+	[EmployeeId_Open]		[int]				NULL,
+	[EmployeeId_Sale]		[int]				NULL,
+	[EmployeeId_TO]		[int]				NULL,
+	[EmployeeId_TA]		[int]				NULL,
 	[InsuredName]			[varchar](50)		NULL,
 	[FirstName]				[varchar](30)		NULL,
 	[LastName]				[varchar](30)		NULL,
@@ -1987,10 +2212,10 @@ CREATE TABLE [Car].[Contract]
 	[CancelReturnAmt]		[money]				NULL,
 PRIMARY KEY ([ContractId]),
 FOREIGN KEY ([Admin]) REFERENCES [Contract].[Admin] (Admin),
-FOREIGN KEY ([VolunteerId_Open]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
-FOREIGN KEY ([VolunteerId_Sale]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
-FOREIGN KEY ([VolunteerId_TO]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
-FOREIGN KEY ([VolunteerId_TA]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
+FOREIGN KEY ([EmployeeId_Open]) REFERENCES [Employee].[Employee] (EmployeeId),
+FOREIGN KEY ([EmployeeId_Sale]) REFERENCES [Employee].[Employee] (EmployeeId),
+FOREIGN KEY ([EmployeeId_TO]) REFERENCES [Employee].[Employee] (EmployeeId),
+FOREIGN KEY ([EmployeeId_TA]) REFERENCES [Employee].[Employee] (EmployeeId),
 -- FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
 FOREIGN KEY ([Vin]) REFERENCES [Car].[Car] (Vin),
 FOREIGN KEY ([SaleDt]) REFERENCES [Legend].[Day] (Dt),
@@ -2066,10 +2291,10 @@ BEGIN
 
 ----------------------------
 -- variables nto defined 
-DECLARE @VolunteerId_Open	int = 1,
-		@VolunteerId_Sale	int = 1,
-		@VolunteerId_TO		int = 1,
-		@VolunteerId_TA		int = 1,
+DECLARE @EmployeeId_Open	int = 1,
+		@EmployeeId_Sale	int = 1,
+		@EmployeeId_TO		int = 1,
+		@EmployeeId_TA		int = 1,
 		@FinanceId			int	= 1;
 
 	DECLARE Contract_cursor CURSOR FOR
@@ -2102,7 +2327,7 @@ DECLARE @VolunteerId_Open	int = 1,
 
 /*
 	INSERT [Car].[Contract] (
-	AppNum, ContractNum, VolunteerId_Open, VolunteerId_Sale, VolunteerId_TO, VolunteerId_TA, InsuredName, FirstName, LastName,
+	AppNum, ContractNum, EmployeeId_Open, EmployeeId_Sale, EmployeeId_TO, EmployeeId_TA, InsuredName, FirstName, LastName,
 	Address, City, State, Zip, Phone, Phone2, Email, SaleDt, RateDt, Vin, Make, Model, Year, NewOrUsed,
 	Coverage, Term, TermMonth, TermMiles, DeductAmt, Class, Admin, CoverageType, FinanceId, PurchOdom, ExpOdom,
 	ExpireDt, TotalPremiumAmt, SalesTaxAmt,	PayPlan, FinanceFeeAmt,
@@ -2116,7 +2341,7 @@ DECLARE @VolunteerId_Open	int = 1,
 -- PaidInFull, PayPlanType, GrossProfitAmt, NetProfitAmt, ReleaseDt,  CancelReturnAmt)
 -- @AcctNum
 
-	VALUES ( @AppNum, @ContractNum, @VolunteerId_Open, @VolunteerId_Sale, @VolunteerId_TO, @VolunteerId_TA, @InsuredName, @FirstName, @LastName,
+	VALUES ( @AppNum, @ContractNum, @EmployeeId_Open, @EmployeeId_Sale, @EmployeeId_TO, @EmployeeId_TA, @InsuredName, @FirstName, @LastName,
 			@Address, @City, @State, @Zip, @Phone, @Phone2, @Email,	@SaleDt, @RateDt, @Vin, @Make, @Model, @Year, @NewOrUsed,
 			@Coverage, 'Term', @TermMonth, @TermMiles, @DeductAmt, @Class, @Admin, @CoverageType, @FinanceId, @PurchOdom, @ExpOdom,
 			@ExpireDt, @TotalPremiumAmt, @SalesTaxAmt, @PayPlan, @FinanceFeeAmt,
@@ -2155,6 +2380,8 @@ IF NOT EXISTS (SELECT * FROM [Car].[Car] WHERE Vin = @Vin)
 	DEALLOCATE Contract_cursor;
 
 END
+
+-- select * from Car.Contract
 
 -- select * from [PrivateReserve].[Acct].[Acct]
 
@@ -2412,20 +2639,20 @@ GO
 ------------------------------------------
 -- 
 ------------------------------------------
-CREATE TABLE [Contract].[VolunteerPay]
+CREATE TABLE [Contract].[EmployeePay]
 (
 	[ContractId]		[int]					NOT NULL,
-	[VolunteerId]		[int]					NOT NULL,
+	[EmployeeId]		[int]					NOT NULL,
 	[SaleRole]			[Legend].[SaleRole]		NOT NULL,
 	[PayPlanId]			[int]					NOT NULL,
 	[TransId]			[int]					NULL,
 FOREIGN KEY ([ContractId]) REFERENCES [Car].[Contract] (ContractId),
-FOREIGN KEY ([VolunteerId]) REFERENCES [Volunteer].[Volunteer] (VolunteerId),
+FOREIGN KEY ([EmployeeId]) REFERENCES [Employee].[Employee] (EmployeeId),
 FOREIGN KEY ([PayPlanId]) REFERENCES [Contract].[PayPlan] (PayPlanId),
 FOREIGN KEY ([TransId]) REFERENCES [Acct].[Tx] (TxId)
 );
 
-CREATE UNIQUE INDEX PK_ContractVolunteerSaleRole ON [Contract].[VolunteerPay] ( ContractId, SaleRole );
+CREATE UNIQUE INDEX PK_ContractEmployeeSaleRole ON [Contract].[EmployeePay] ( ContractId, SaleRole );
 
 /*
 select * from [Policy].[PayPlan];
@@ -2446,12 +2673,12 @@ select * from [Pay].[Sale]
 -------------------------
 -- Hire some screeners
 -------------------------
-select * from Volunteer.Volunteer
+select * from Employee.Employee
 
-DECLARE @RoleId int = (SELECT RoleId from [Volunteer].[Role] WHERE Role = 'Screener')
-DECLARE @RateId int = (SELECT RateId from [Volunteer].[Rate] WHERE Name = 'Probation')
+DECLARE @RoleId int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener')
+DECLARE @RateId int = (SELECT RateId from [Employee].[Rate] WHERE Name = 'Probation')
 
-INSERT [Volunteer].[Volunteer] (RoleId, RateId, FirstName, HireDt)
+INSERT [Employee].[Employee] (RoleId, RateId, FirstName, HireDt)
 select @RoleId, @RateId, 'Kitty', '2015-04-15' union
 select @RoleId, @RateId, 'Chad', '2015-04-15' union
 select @RoleId, @RateId, 'Smith', '2015-04-15' union
@@ -2463,14 +2690,14 @@ GO
 
 /*
 select * from Policy.Policy
-select * from Volunteer.Volunteer
-select * from Volunteer.day
+select * from Employee.Employee
+select * from Employee.day
 */
 
 -- add housrs worked
 /*
--- truncate table [Volunteer].[Day];
-select * from Volunteer.Day
+-- truncate table [Employee].[Day];
+select * from Employee.Day
 
 select * from Employee.Employee
 select * from Employee.Role
@@ -2484,62 +2711,62 @@ GO
 DECLARE @LoadData char(1) = (SELECT LoadData FROM [dbo].[Tmp]);
 IF (@LoadData = 'Y')
 BEGIN
-	DECLARE @RoleId_Screener int = (SELECT RoleId from [Volunteer].[Role] WHERE Role = 'Screener');
-	DECLARE @RoleId_Closer int = (SELECT RoleId from [Volunteer].[Role] WHERE Role = 'Closer');
+	DECLARE @RoleId_Screener int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Screener');
+	DECLARE @RoleId_Closer int = (SELECT RoleId from [Employee].[Role] WHERE Role = 'Closer');
 	---------------------------------------------------------------------------------------------
 	--  Chainz Works as a screener
 	---------------------------------------------------------------------------------------------
-	DECLARE @VolunteerId_Chainz int = (SELECT VolunteerId from [Volunteer].[Volunteer] WHERE FirstName = 'Chainz');
-	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @VolunteerId_Chainz, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
-	select @VolunteerId_Chainz, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
-	select @VolunteerId_Chainz, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
-	select @VolunteerId_Chainz, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	DECLARE @EmployeeId_Chainz int = (SELECT EmployeeId from [Employee].[Employee] WHERE FirstName = 'Chainz');
+	insert [Employee].[Day] (EmployeeId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmployeeId_Chainz, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 2, 0 union
+	select @EmployeeId_Chainz, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 1 union
+	select @EmployeeId_Chainz, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 1, 0 union
+	select @EmployeeId_Chainz, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
 	;
 
 	---------------------------------------------------------------------------------------------
 	--  GuzJr Works as a screener
 	---------------------------------------------------------------------------------------------
-	DECLARE @VolunteerId_GuzJr int = (SELECT VolunteerId from [Volunteer].[Volunteer] WHERE FirstName = 'Guz Jr');
-	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @VolunteerId_GuzJr, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
-	select @VolunteerId_GuzJr, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
-	select @VolunteerId_GuzJr, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
-	select @VolunteerId_GuzJr, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	DECLARE @EmployeeId_GuzJr int = (SELECT EmployeeId from [Employee].[Employee] WHERE FirstName = 'Guz Jr');
+	insert [Employee].[Day] (EmployeeId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmployeeId_GuzJr, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
+	select @EmployeeId_GuzJr, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
+	select @EmployeeId_GuzJr, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
+	select @EmployeeId_GuzJr, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
 	;
 
 	---------------------------------------------------------------------------------------------
 	--  Prego Works as a screener
 	---------------------------------------------------------------------------------------------
-	DECLARE @VolunteerId_Prego int = (SELECT VolunteerId from [Volunteer].[Volunteer] WHERE FirstName = 'Prego');
-	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @VolunteerId_Prego, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 4, 0 union
-	select @VolunteerId_Prego, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 0 union
-	select @VolunteerId_Prego, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 2, 0 union
-	select @VolunteerId_Prego, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 2, 0 -- union
+	DECLARE @EmployeeId_Prego int = (SELECT EmployeeId from [Employee].[Employee] WHERE FirstName = 'Prego');
+	insert [Employee].[Day] (EmployeeId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmployeeId_Prego, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 4, 0 union
+	select @EmployeeId_Prego, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 3, 0 union
+	select @EmployeeId_Prego, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 2, 0 union
+	select @EmployeeId_Prego, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 2, 0 -- union
 	;
 
 	---------------------------------------------------------------------------------------------
 	--  Tawney Works as a screener
 	---------------------------------------------------------------------------------------------
-	DECLARE @VolunteerId_Tawney int = (SELECT VolunteerId from [Volunteer].[Volunteer] WHERE FirstName = 'Tawney');
-	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @VolunteerId_Tawney, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
-	select @VolunteerId_Tawney, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
-	select @VolunteerId_Tawney, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
-	select @VolunteerId_Tawney, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
+	DECLARE @EmployeeId_Tawney int = (SELECT EmployeeId from [Employee].[Employee] WHERE FirstName = 'Tawney');
+	insert [Employee].[Day] (EmployeeId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmployeeId_Tawney, @RoleId_Screener, '2015-03-26', '2015-03-26 9:45am', '2015-03-26 6:00pm', 1, 0 union
+	select @EmployeeId_Tawney, @RoleId_Screener, '2015-03-27', '2015-03-27 9:45am', '2015-03-27 6:00pm', 1, 0 union
+	select @EmployeeId_Tawney, @RoleId_Screener, '2015-03-30', '2015-03-30 10:20am', '2015-03-30 6:00pm', 0, 0 union
+	select @EmployeeId_Tawney, @RoleId_Screener, '2015-03-31', '2015-03-31 11:00am', '2015-03-30 6:00pm', 0, 0 -- union
 	;
 
 	---------------------------------------------------------------------------------------------
 	--  Tawney Works as a Closer
 	---------------------------------------------------------------------------------------------
-	insert [Volunteer].[Day] (VolunteerId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
-	select @VolunteerId_Tawney, @RoleId_Closer, '2015-03-27', '2015-03-27 12:45am', '2015-03-27 1:00pm', 0, 1 -- union
+	insert [Employee].[Day] (EmployeeId, RoleId, Dt, StartTm, EndTm, TransferCnt, CloseCnt)
+	select @EmployeeId_Tawney, @RoleId_Closer, '2015-03-27', '2015-03-27 12:45am', '2015-03-27 1:00pm', 0, 1 -- union
 	;
 END
 GO
 
--- select * from Volunteer.day
+-- select * from Employee.day
 
 ---------------------------------------------------------------------------------------------
 --  Write some policies
