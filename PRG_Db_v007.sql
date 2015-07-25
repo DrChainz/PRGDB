@@ -2325,7 +2325,6 @@ DECLARE @EmployeeId_Open	int = 1,
 	BEGIN   
 		-- ContractId,
 
-/*
 	INSERT [Car].[Contract] (
 	AppNum, ContractNum, EmployeeId_Open, EmployeeId_Sale, EmployeeId_TO, EmployeeId_TA, InsuredName, FirstName, LastName,
 	Address, City, State, Zip, Phone, Phone2, Email, SaleDt, RateDt, Vin, Make, Model, Year, NewOrUsed,
@@ -2350,7 +2349,7 @@ DECLARE @EmployeeId_Open	int = 1,
 			@DiscountAmt, @DisbursementAmt, @FundingToEntityAmt, @ReserveAmt, @EffectiveDt,
 			@InstallmentsMade, @LastPaymentRcvdDt, 
 			@Cancelled, @CancelDt );
-*/
+
 IF NOT EXISTS (SELECT * FROM [Car].[Car] WHERE Vin = @Vin)
 	Print @Vin;
 			
