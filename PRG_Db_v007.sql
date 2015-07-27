@@ -1341,6 +1341,7 @@ SELECT UPPER(Make), FactoryWarrantyBasic_Yr, FactoryWarrantyBasic_Miles, Factory
 FROM [PrivateReserve].[Car].[Make]
 GO
 
+
 /*
 delete [PrivateReserve].[Car].[Make] where Make = 'INFINITY'
 delete [Car].[Make] where Make = 'INFINITY'

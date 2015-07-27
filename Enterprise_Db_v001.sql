@@ -651,7 +651,7 @@ SELECT 'VI','U.S. Virgin Islands', 'EST'
 GO
 
 --------------------------------------------------------------
---
+--  This is where it starts
 --------------------------------------------------------------
 CREATE TABLE [DbObjs].[Schema]
 (
@@ -662,8 +662,16 @@ GO
 CREATE UNIQUE INDEX [PK_DbObjs_Schema] ON [DbObjs].[Schema] ( [CompanyType], [Schema] );
 
 INSERT [DbObjs].[Schema] ( [CompanyType], [Schema] )
-SELECT 'Grow','Acct' union
-SELECT 'Grow','Nute'
+SELECT 'All*', 'Acct' union
+
+SELECT 'Grow', 'Nute' union
+
+SELECT 'Make', 'Job' union
+
+SELECT 'Coll', 'Patient' union
+SELECT 'Coll', 'Volunteer' union
+SELECT 'Coll', 'Product' union
+SELECT 'Coll', 'Market';
 GO
 
 --------------------------------------------------------------
@@ -688,11 +696,34 @@ select 'All*', 'Acct', 'Tx' union
 select 'All*', 'Acct', 'Journal' union
 
 select 'Grow', 'Nute', 'Brand' union
-select 'Grow', 'Nute', 'Nute'
+select 'Grow', 'Nute', 'Nute' union
 
+select 'Coll', 'Patient', 'Patient' union
+select 'Coll', 'Patient', 'PatientVisit' union
+select 'Coll', 'Patient', 'VerifyService' union
+select 'Coll', 'Patient', 'Doctor' union
+select 'Coll', 'Patient', 'Ticket' union
+select 'Coll', 'Patient', 'TicketDtl' union
+select 'Coll', 'Patient', 'PatientFeedback' union
 
+select 'Coll', 'Volunteer', 'Volunteer' union
 
+select 'Coll', 'Product', 'Vendor' union
+select 'Coll', 'Product', 'ProductCategory' union
+select 'Coll', 'Product', 'Product' union
+select 'Coll', 'Product', 'ProductVariant' union
+select 'Coll', 'Product', 'Strain' union
+select 'Coll', 'Product', 'StrainGrade' union
+select 'Coll', 'Product', 'Promo' union
+select 'Coll', 'Product', 'Discount' union
+
+select 'Coll', 'Market', 'MediaType' union
+select 'Coll', 'Market', 'Media' union
+select 'Coll', 'Market', 'MarketEvent' union
+select 'Coll', 'Market', 'MediaSpend'
 GO
+
+-- select * from [DbObjs].[Table];
 
 --------------------------------------------------------------
 --
