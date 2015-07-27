@@ -18,6 +18,8 @@ CREATE SCHEMA [Security];
 GO
 CREATE SCHEMA [Legend];
 GO
+CREATE SCHEMA [DbObjs];
+GO
 
 ---------------------------------------
 -- Rules
@@ -86,14 +88,19 @@ AS
 @Val IN ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
 GO
 
+CREATE RULE [dbo].[CompanyType]
+AS
+@Val IN ('All*','Grow','Make','Shop','Vend','Bank','Coll')
+GO
+
 CREATE TYPE [Legend].[DbAction] FROM [char](6) NOT NULL
 GO
 
 CREATE TYPE [Legend].[AreaCd] FROM [char](3) NOT NULL
 GO
 
--- CREATE TYPE [dbo].[State] FROM [char](2) NOT NULL
--- GO
+CREATE TYPE [dbo].[CompanyType] FROM [char](4) NOT NULL
+GO
 
 CREATE TYPE [Legend].[WeekDay] FROM [varchar](9) NOT NULL
 GO
@@ -129,6 +136,9 @@ sp_bindrule '[Legend].[AreaCd]', '[Legend].[AreaCd]';
 GO
 
 sp_bindrule '[dbo].[State]', '[dbo].[State]';
+GO
+
+sp_bindrule '[dbo].[CompanyType]', '[dbo].[CompanyType]';
 GO
 
 sp_bindrule '[Legend].[WeekDay]', '[Legend].[WeekDay]';
@@ -638,4 +648,60 @@ SELECT 'DC','Washington DC', 'EST' UNION
 SELECT 'PR','Puerto Rico', 'EST' UNION
 SELECT 'VI','U.S. Virgin Islands', 'EST'
 ;
+GO
+
+--------------------------------------------------------------
+--
+--------------------------------------------------------------
+CREATE TABLE [DbObjs].[Schema]
+(
+	[CompanyType]	[dbo].[CompanyType]		NOT NULL,
+	[Schema]		[varchar](20)			NOT NULL
+);
+GO
+CREATE UNIQUE INDEX [PK_DbObjs_Schema] ON [DbObjs].[Schema] ( [CompanyType], [Schema] );
+
+INSERT [DbObjs].[Schema] ( [CompanyType], [Schema] )
+SELECT 'Grow','Acct' union
+SELECT 'Grow','Nute'
+GO
+
+--------------------------------------------------------------
+--
+--------------------------------------------------------------
+CREATE TABLE [DbObjs].[Table]
+(
+	[TableId]		[int]					NOT NULL IDENTITY(1,1),
+	[CompanyType]	[dbo].[CompanyType]		NOT NULL,
+	[Schema]		[varchar](20)			NOT NULL,
+	[TableName]		[varchar](30)			NOT NULL,
+PRIMARY KEY (TableId)
+);
+GO
+
+INSERT [DbObjs].[Table] ( [CompanyType], [Schema], [TableName] )
+select 'All*', 'Acct', 'Currency' union
+select 'All*', 'Acct', 'Acct' union
+select 'All*', 'Acct', 'Ledger' union
+select 'All*', 'Acct', 'LedgerChange' union
+select 'All*', 'Acct', 'Tx' union
+select 'All*', 'Acct', 'Journal' union
+
+select 'Grow', 'Nute', 'Brand' union
+select 'Grow', 'Nute', 'Nute'
+
+
+
+GO
+
+--------------------------------------------------------------
+--
+--------------------------------------------------------------
+CREATE TABLE [DbObjs].[TableColumn]
+(
+	[TableId]		[int]					NOT NULL,
+	[ColumnName]	[varchar](30)			NOT NULL,
+	[ColumnType]	[varchar](20)			NOT NULL,
+	[TableName]		[varchar](30)			NOT NULL
+);
 GO
