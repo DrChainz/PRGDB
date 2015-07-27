@@ -375,7 +375,7 @@ WHERE BadName = 'N'
 ORDER BY Cnt DESC;
 GO
 
-
+/*
 select top 1000 * from Car.Car
 select * from Car.Contract
 
@@ -384,7 +384,7 @@ select * from Car.MakeInclude
 select * from Legend.State
 
 select * from dnc.State
-
+*/
 
 
 /*
@@ -1802,10 +1802,8 @@ SELECT State FROM [PrivateReserve].[DNC].[State]
 WHERE State IN(select State from [Legend].[State]);
 GO
 
-INSERT [DNC].[State] (State)
-select 'XX'
-
-select * from Legend.State
+-- select * from Legend.State
+-- select * from dnc.State
 
 ---------------------------------------
 --
